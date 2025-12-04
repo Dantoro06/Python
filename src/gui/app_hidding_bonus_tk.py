@@ -1,11 +1,19 @@
 import os
 import sys
 import threading
+from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 from tkinter import ttk
 
 import pandas as pd
+
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+MOTOR_DIR = BASE_DIR / "motor"
+
+if str(MOTOR_DIR) not in sys.path:
+    sys.path.insert(0, str(MOTOR_DIR))
 
 from motor_hidding_bonus import ejecutar_motor_completo
 
