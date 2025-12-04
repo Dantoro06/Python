@@ -8,10 +8,13 @@ from tkinter import ttk
 
 import pandas as pd
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = BASE_DIR / "src"
 
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
+for path in (BASE_DIR, SRC_DIR):
+    str_path = str(path)
+    if str_path not in sys.path:
+        sys.path.insert(0, str_path)
 
 from motor.motor_hidding_bonus import ejecutar_motor_completo
 
