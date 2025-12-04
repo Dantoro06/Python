@@ -1,3 +1,16 @@
+import sys
+from pathlib import Path
+
+
+EXPERIMENTAL_DIR = Path(__file__).resolve().parent
+BASE_DIR = EXPERIMENTAL_DIR.parents[1]
+MOTOR_DIR = BASE_DIR / "motor"
+
+for path in (EXPERIMENTAL_DIR, MOTOR_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+
 def ejecutar_analisis(self):
     """
     Lógica del botón 'Ejecutar análisis'.

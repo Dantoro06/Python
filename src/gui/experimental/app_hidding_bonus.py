@@ -1,6 +1,16 @@
 import os
+import sys
 import time
+from pathlib import Path
+
 import pandas as pd
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+MOTOR_DIR = BASE_DIR / "motor"
+
+if str(MOTOR_DIR) not in sys.path:
+    sys.path.insert(0, str(MOTOR_DIR))
 
 from motor_hidding_bonus import (
     ejecutar_hidding_bonus,
