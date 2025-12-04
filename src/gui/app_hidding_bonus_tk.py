@@ -8,7 +8,8 @@ from tkinter import ttk
 
 import pandas as pd
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+# Ensure imports resolve from the project root (…/Python)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SRC_DIR = BASE_DIR / "src"
 
 for path in (BASE_DIR, SRC_DIR):
