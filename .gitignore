@@ -1,0 +1,21 @@
+# Entorno virtual
+venv_riesgo/
+venv/
+.env/
+*.pyc
+__pycache__/
+
+# Datos grandes (entradas/salidas)
+*.csv
+*.xlsx
+*.zip
+
+# Logs / reportes grandes
+*reporte_riesgo_*.json
+*hidding_bonus_base.*
+*hidding_bonus_multiusuario.*
+*hidding_bonus_selfhedging.*
+*hidding_bonus_*_detalle.*
+
+# Archivos temporales de Excel
+~$*.xlsx
