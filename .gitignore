@@ -1,21 +1,22 @@
-# Entorno virtual
-venv_riesgo/
-venv/
-.env/
-*.pyc
-__pycache__/
+# === Carpetas pesadas ===
+datasets/
+reports/
 
-# Datos grandes (entradas/salidas)
+# === Archivos de salida ===
 *.csv
 *.xlsx
-*.zip
+*.json
 
-# Logs / reportes grandes
-*reporte_riesgo_*.json
-*hidding_bonus_base.*
-*hidding_bonus_multiusuario.*
-*hidding_bonus_selfhedging.*
-*hidding_bonus_*_detalle.*
+# === Python cache ===
+__pycache__/
+*.pyc
 
-# Archivos temporales de Excel
-~$*.xlsx
+# === Entornos virtuales ===
+venv/
+env/
+.venv/
+
+# === Configs locales ===
+*.ini
+*.log
+.DS_Store
