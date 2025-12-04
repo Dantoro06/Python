@@ -1,4 +1,4 @@
-<img width="988" height="430" alt="imagen" src="https://github.com/user-attachments/assets/92ee7c01-102c-47b5-a576-7659a19077b7" /># 🧠 Motor de Riesgo – Hidding Bonus / Self-Hedging / Abuso de Bonos  
+# 🧠 Motor de Riesgo – Hidding Bonus / Self-Hedging / Abuso de Bonos  
 ### Proyecto Nueve11 – Herramienta de análisis masivo de apuestas deportivas
 
 ---
