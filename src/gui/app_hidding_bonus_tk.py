@@ -8,7 +8,6 @@ from tkinter import ttk
 
 import pandas as pd
 
-
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 if str(BASE_DIR) not in sys.path:
