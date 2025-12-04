@@ -1,0 +1,24 @@
+# === Core científico ===
+pandas==2.1.4
+numpy==1.26.2
+
+# === Excel / lectura-escritura ===
+openpyxl==3.1.2
+
+# === Barra de progreso para análisis pesados ===
+tqdm==4.66.1
+
+# === Dashboard / visualización ===
+streamlit==1.29.0
+matplotlib==3.8.2
+
+# === Utilidades ===
+python-dateutil==2.8.2
+pathlib==1.0.1
+
+# === Opcional (depende del motor) ===
+# Si usas regex complejas
+regex==2023.10.3
+
+# Si luego deseas procesar archivos por chunks con polars
+# polars==0.20.0
