@@ -2,6 +2,7 @@
 import os
 import sys
 import threading
+import time
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
@@ -30,7 +31,7 @@ if str(MOTOR_DIR) not in sys.path:  # CAMBIO
     sys.path.insert(0, str(MOTOR_DIR))  # CAMBIO
 
 # Importar el motor desde el módulo correcto  # CAMBIO
-from motor_hidding_bonus import ejecutar_motor_completo  # CAMBIO
+from utils.dashboard_riesgo import ejecutar_motor_completo, generar_reporte_json  # CAMBIO
 
 
 # ==========================================================
@@ -139,14 +140,73 @@ def ejecutar_analisis(
         if ruta_bonus_norm == "":                             # CAMBIO
             ruta_bonus_norm = None                            # CAMBIO
 
-        # Llamar al motor con o sin base de bonos             # CAMBIO
-        ejecutar_motor_completo(
+        t0 = time.perf_counter()
+        df_base, df_multi, df_self = ejecutar_motor_completo(
             df,
             ruta_bonus=ruta_bonus_norm,
             tolerancia_cobertura=tolerancia_cobertura,
             min_total_apostado=min_total_apostado,
             max_apuestas_por_seleccion=max_apuestas_por_seleccion,
         )
+        duracion = time.perf_counter() - t0
+
+        reporte = generar_reporte_json(
+            df_base=df_base,
+            df_multi=df_multi,
+            df_self=df_self,
+            archivos_entrada=lista_archivos,
+            total_apuestas_original=total,
+            tolerancia_cobertura=tolerancia_cobertura,
+            min_total_apostado=min_total_apostado,
+            max_apuestas_por_seleccion=max_apuestas_por_seleccion,
+            tiempo_proceso_seg=duracion,
+        )
+
+        resumen = reporte.get("resumen_ejecucion", {})
+        estad = reporte.get("estadisticas_riesgo", {})
+        multi = estad.get("multiusuario", {})
+        selfh = estad.get("self_hedging", {})
+        top_users = reporte.get("top_usuarios_riesgo", [])
+        top_events = reporte.get("top_eventos_sospechosos", [])
+
+        total_tx = resumen.get("total_transacciones", 0) or 0
+        usuarios = resumen.get("usuarios_analizados", 0) or 0
+        eventos = resumen.get("eventos_analizados", 0) or 0
+        ratio = resumen.get("ratio_sospecha_global", 0.0) or 0.0
+        casos_multi = multi.get("casos_totales", 0) or 0
+        casos_self = selfh.get("casos_totales", 0) or 0
+
+        resumen_gui = [
+            f"Total transacciones analizadas: {total_tx}",
+            f"Usuarios analizados: {usuarios}",
+            f"Eventos analizados: {eventos}",
+            f"Casos multiusuario detectados: {casos_multi}",
+            f"Casos self-hedging detectados: {casos_self}",
+            f"Ratio global de sospecha: {ratio:.4%}",
+        ]
+
+        if top_users:
+            resumen_gui.append("")
+            resumen_gui.append("Top usuarios en riesgo:")
+            for u in top_users[:3]:
+                resumen_gui.append(
+                    f" - {u.get('usuario_id')} "
+                    f"(total casos={u.get('casos_total')}, "
+                    f"multi={u.get('casos_multiusuario')}, "
+                    f"self={u.get('casos_self_hedging')})"
+                )
+
+        if top_events:
+            resumen_gui.append("")
+            resumen_gui.append("Top eventos sospechosos:")
+            for ev in top_events[:3]:
+                resumen_gui.append(
+                    f" - {ev.get('evento_id')} "
+                    f"(casos={ev.get('usuarios_involucrados')}, "
+                    f"max nivel={ev.get('riesgo_maximo')})"
+                )
+
+        texto_resumen = "\n".join(resumen_gui)
 
         print("\n[GUI] Motor finalizado sin errores.\n")  # CAMBIO
         messagebox.showinfo(
@@ -154,6 +214,7 @@ def ejecutar_analisis(
             "El análisis ha finalizado correctamente.",
             parent=ventana,
         )
+        messagebox.showinfo("Resumen de riesgo", texto_resumen, parent=ventana)
 
     except Exception as e:
         # Log de error en consola y en popup
