@@ -138,7 +138,14 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
     # --- Identificación de columnas clave ---
     col_user = _get_col(df, ["Player Id", "playerid", "userid", "user_id", "player_id"])
     col_sport = _get_col(df, ["Sport", "Deporte"])
-    col_bet_type = _get_col(df, ["Bet type", "bettype", "bet_type", "BetType", "betType"])
+    try:
+        col_bet_type = _get_col(df, ["Bet type", "bettype", "bet_type", "BetType", "betType"])
+    except KeyError:
+        col_bet_type = None
+        print(
+            "[Filtro apuesta simple] No se encontraron columnas de tipo de apuesta "
+            "(['Bet type', 'bettype']). Se omitirá este filtro."
+        )
     col_status = _get_col(df, ["Status", "Estado"])
     col_market = _get_col(df, ["Market types", "Market type", "Tipo mercado"])
     col_event = _get_col(df, ["Event name", "Evento", "Partido"])
@@ -178,11 +185,14 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
           sorted(sport_norm[mask_s].unique())[:5])
 
     # --- Filtro apuesta simple ---
-    bet_norm = df[col_bet_type].astype(str).str.lower()
-    antes = len(df)
-    df = df[bet_norm.isin(["single", "simple", "sencilla"])]
-    print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
-    print(f"[Filtro apuesta simple] Registros después: {len(df)}")
+    if col_bet_type is not None:
+        bet_norm = df[col_bet_type].astype(str).str.lower()
+        antes = len(df)
+        df = df[bet_norm.isin(["single", "simple", "sencilla"])]
+        print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
+        print(f"[Filtro apuesta simple] Registros después: {len(df)}")
+    else:
+        print("[Filtro apuesta simple] Filtro omitido por falta de columna Bet type/bettype.")
 
     # --- Filtro estado (removemos canceladas/void) ---
     status_norm = df[col_status].astype(str).str.lower()
