@@ -29,13 +29,60 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _normalizar_nombre_columna(nombre: str) -> str:
+    """Normaliza un encabezado de columna para comparaciones robustas."""
+
     s = str(nombre)
+    # Remover BOM y variantes comunes "raras" que suelen aparecer en CSVs
     s = s.replace("\ufeff", "").replace("ï»¿", "")
+    # Normalizar acentos/diacríticos
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    # Minúsculas + recorte de espacios
     s = s.lower().strip()
+    # Eliminar cualquier carácter no alfanumérico (espacios, guiones, puntos, etc.)
     s = re.sub(r"[^a-z0-9]", "", s)
     return s
+
+
+# Alias ampliados para cada columna lógica que manejamos en los datasets de apuestas
+COLUMN_ALIASES = {
+    "user_id": [
+        "player id",
+        "playerid",
+        "player_id",
+        "userid",
+        "user_id",
+        "user",
+        "usuario",
+        "user id",
+    ],
+    "sport": [
+        "sport",
+        "deporte",
+        "sports",
+        "tipo deporte",
+        "tipodeporte",
+    ],
+    "bet_type": [
+        "bet type",
+        "bettype",
+        "bet_type",
+        "bettype",
+        "tipo apuesta",
+    ],
+    "status": ["status", "estado", "bet status"],
+    "market": [
+        "market types",
+        "market type",
+        "tipo mercado",
+        "market",
+        "market 1x2",
+        "mercado",
+    ],
+    "event_name": ["event name", "evento", "partido", "match", "event", "nombre evento"],
+    "stake": ["stake", "valor apostado", "bet amount", "importe", "monto", "bet stake"],
+    "net_price": ["net price", "price", "cuota", "odd", "odds", "precio", "valor cuota"],
+}
 
 
 def _get_col(
@@ -51,15 +98,23 @@ def _get_col(
     con BOM y variaciones leves del nombre.
     """
 
+    # Unificar los posibles nombres con alias adicionales si se indicó nombre lógico
+    if nombre_logico:
+        alias_extra = COLUMN_ALIASES.get(nombre_logico, [])
+    else:
+        alias_extra = []
+
+    posibles_unicos = list({*posibles, *alias_extra})
+
     cols_norm = {_normalizar_nombre_columna(c): c for c in df.columns}
     original_to_norm = {c: _normalizar_nombre_columna(c) for c in df.columns}
 
-    for nombre in posibles:
+    for nombre in posibles_unicos:
         clave = _normalizar_nombre_columna(nombre)
         if clave in cols_norm:
             return cols_norm[clave]
 
-    for nombre in posibles:
+    for nombre in posibles_unicos:
         norm_pos = _normalizar_nombre_columna(nombre)
         candidatos = [
             original
@@ -71,7 +126,7 @@ def _get_col(
         if len(candidatos) > 1:
             return sorted(candidatos, key=len)[0]
 
-    for nombre in posibles:
+    for nombre in posibles_unicos:
         clave = _normalizar_nombre_columna(nombre)
         for c in df.columns:
             if clave == _normalizar_nombre_columna(c):
@@ -80,12 +135,13 @@ def _get_col(
     if not obligatorio:
         return None
 
-    print(f"[_get_col DEBUG] posibles = {posibles}")
+    print(f"[_get_col DEBUG] posibles (con alias) = {sorted(set(posibles_unicos))}")
     print(f"[_get_col DEBUG] columnas originales = {df.columns.tolist()}")
     print(f"[_get_col DEBUG] columnas normalizadas = {original_to_norm}")
     referencia = f" para '{nombre_logico}'" if nombre_logico else ""
     raise KeyError(
-        f"No se encontró ninguna columna compatible{referencia}. Posibles alias: {posibles}"
+        "No se encontró ninguna columna compatible"
+        f"{referencia}. Posibles alias: {sorted(set(posibles_unicos))}"
     )
 
 
