@@ -434,6 +434,15 @@ def ejecutar_hidding_bonus(
     # Solo 1 / X / 2 válidos
     df = df_base[df_base["selection_inferida"].isin(["1", "X", "2"])].copy()
 
+    if df.empty:
+        print("  ⚠ No hay apuestas con selección 1/X/2 para analizar tríos multiusuario.")
+        # Guardar tabla base aunque esté vacía
+        df_base.to_excel(ruta_base, index=False)
+        print(f"Tabla base guardada en: {ruta_base}")
+        print("No se encontraron tríos multiusuario que cumplan el filtro de cobertura.")
+        # Devolver df_base y un DataFrame vacío para df_trios
+        return df_base, pd.DataFrame()
+
     print("Buscando TRÍOS multiusuario con filtro de cobertura...")
 
     registros_resumen = []
@@ -446,10 +455,16 @@ def ejecutar_hidding_bonus(
         .nunique()
         .unstack(fill_value=0)
     )
+    # Asegurarnos de que existen las columnas "1", "X" y "2"
+    cobertura_por_evento = cobertura_por_evento.reindex(
+        columns=["1", "X", "2"],
+        fill_value=0
+    )
+
     eventos_con_1x2 = cobertura_por_evento[
-        (cobertura_por_evento.get("1", 0) > 0)
-        & (cobertura_por_evento.get("X", 0) > 0)
-        & (cobertura_por_evento.get("2", 0) > 0)
+        (cobertura_por_evento["1"] > 0)
+        & (cobertura_por_evento["X"] > 0)
+        & (cobertura_por_evento["2"] > 0)
     ].index.tolist()
     print(f"Eventos con al menos una apuesta 1/X/2: {len(eventos_con_1x2)}")
 
