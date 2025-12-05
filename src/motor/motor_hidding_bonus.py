@@ -1,4 +1,5 @@
 import pandas as pd
+from pathlib import Path
 from typing import List, Tuple, Optional, Callable
 
 # Tipo de callback de progreso: (fase, actual, total)
@@ -9,6 +10,15 @@ import json
 from datetime import datetime
 import socket
 import os
+
+
+# ============================================================
+# Rutas de proyecto
+# ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+REPORTS_DIR = PROJECT_ROOT / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -269,8 +279,8 @@ def ejecutar_hidding_bonus(
     df_apuestas: pd.DataFrame,
     tolerancia_cobertura: float = 0.10,
     min_total_apostado: float = 0.0,
-    ruta_base: str = "hidding_bonus_base.xlsx",
-    ruta_multi: str = "hidding_bonus_multiusuario.xlsx",
+    ruta_base: str | Path = REPORTS_DIR / "hidding_bonus_base.xlsx",
+    ruta_multi: str | Path = REPORTS_DIR / "hidding_bonus_multiusuario.xlsx",
     max_apuestas_por_seleccion: int = 20,
     progress_callback: ProgressCallback = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -289,6 +299,11 @@ def ejecutar_hidding_bonus(
       - df_base: tabla filtrada base
       - df_trios: tabla resumen (1 fila por trío)
     """
+
+    ruta_base = Path(ruta_base)
+    ruta_multi = Path(ruta_multi)
+    ruta_base.parent.mkdir(parents=True, exist_ok=True)
+    ruta_multi.parent.mkdir(parents=True, exist_ok=True)
 
     # 1) Tabla base con filtros de deporte, bet type, estados, 1x2, etc.
     df_base = preparar_tabla_base_hidding_bonus(df_apuestas)
@@ -453,14 +468,10 @@ def ejecutar_hidding_bonus(
         print(f"Total tríos detectados (tras filtro de cobertura): {len(df_trios)}")
 
         if not df_trios_detalle.empty:
-            df_trios_detalle.to_excel(
-                "hidding_bonus_multiusuario_trios_detalle.xlsx",
-                index=False,
-            )
-            print(
-                "Detalle de tríos guardado en: "
-                "hidding_bonus_multiusuario_trios_detalle.xlsx"
-            )
+            ruta_detalle_trios = REPORTS_DIR / "hidding_bonus_multiusuario_trios_detalle.xlsx"
+            ruta_detalle_trios.parent.mkdir(parents=True, exist_ok=True)
+            df_trios_detalle.to_excel(ruta_detalle_trios, index=False)
+            print(f"Detalle de tríos guardado en: {ruta_detalle_trios}")
     else:
         print("No se encontraron tríos multiusuario que cumplan el filtro de cobertura.")
 
@@ -473,7 +484,7 @@ def ejecutar_hidding_bonus(
 
 def ejecutar_self_hedging(
     df_base: pd.DataFrame,
-    ruta_resultados: str = "hidding_bonus_selfhedging.xlsx",
+    ruta_resultados: str | Path = REPORTS_DIR / "hidding_bonus_selfhedging.xlsx",
     progress_callback: ProgressCallback = None,
 ) -> pd.DataFrame:
     """
@@ -487,6 +498,9 @@ def ejecutar_self_hedging(
     """
 
     print("\nDetectando self-hedging...")
+
+    ruta_resultados = Path(ruta_resultados)
+    ruta_resultados.parent.mkdir(parents=True, exist_ok=True)
 
     # Trabajamos solo con filas que tienen selección_inferida 1/X/2
     if "selection_inferida" not in df_base.columns:
@@ -620,14 +634,13 @@ def ejecutar_self_hedging(
         print(f"Resultados resumen guardados en: {ruta_resultados}")
 
         if not df_detalle.empty:
+            ruta_detalle = REPORTS_DIR / "hidding_bonus_selfhedging_detalle.xlsx"
+            ruta_detalle.parent.mkdir(parents=True, exist_ok=True)
             df_detalle.to_excel(
-                "hidding_bonus_selfhedging_detalle.xlsx",
+                ruta_detalle,
                 index=False,
             )
-            print(
-                "Detalle de self-hedging guardado en: "
-                "hidding_bonus_selfhedging_detalle.xlsx"
-            )
+            print(f"Detalle de self-hedging guardado en: {ruta_detalle}")
     else:
         print("No se detectaron patrones de self-hedging.")
 
@@ -983,12 +996,17 @@ def cruzar_con_usuarios_bonus(
     print("🔗 Cruzando con resultados self-hedging...")
     df_self_cruce = pd.merge(df_self, df_bonus, on=columna_cruce, how="inner")
 
-    df_multi_cruce.to_excel("abuso_bonus_multiusuario.xlsx", index=False)
-    df_self_cruce.to_excel("abuso_bonus_selfhedging.xlsx", index=False)
+    ruta_abuso_multi = REPORTS_DIR / "abuso_bonus_multiusuario.xlsx"
+    ruta_abuso_self = REPORTS_DIR / "abuso_bonus_selfhedging.xlsx"
+    ruta_abuso_multi.parent.mkdir(parents=True, exist_ok=True)
+    ruta_abuso_self.parent.mkdir(parents=True, exist_ok=True)
+
+    df_multi_cruce.to_excel(ruta_abuso_multi, index=False)
+    df_self_cruce.to_excel(ruta_abuso_self, index=False)
 
     print("\n✅ Cruce de bonus completado:")
-    print("   → abuso_bonus_multiusuario.xlsx")
-    print("   → abuso_bonus_selfhedging.xlsx")
+    print(f"   → {ruta_abuso_multi}")
+    print(f"   → {ruta_abuso_self}")
 
     return df_multi_cruce, df_self_cruce
 
@@ -1062,8 +1080,10 @@ def generar_abuso_total(
     """
     df = calcular_score_abuso_bonus(df_multi_bonus, df_self_bonus)
     if not df.empty:
-        df.to_excel("abuso_bonus_total.xlsx", index=False)
-        print("\n✅ Generado archivo abuso_bonus_total.xlsx")
+        ruta_abuso_total = REPORTS_DIR / "abuso_bonus_total.xlsx"
+        ruta_abuso_total.parent.mkdir(parents=True, exist_ok=True)
+        df.to_excel(ruta_abuso_total, index=False)
+        print(f"\n✅ Generado archivo {ruta_abuso_total}")
     else:
         print("\n⚠ No se generaron registros de abuso de bonus.")
     return df
