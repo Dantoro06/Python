@@ -34,6 +34,24 @@ from motor_hidding_bonus import ejecutar_motor_completo  # CAMBIO
 
 
 # ==========================================================
+# UTILIDADES DE RUTAS
+# ==========================================================
+
+def abrir_carpeta_resultados(ventana):
+    reports_dir = PROJECT_ROOT / "reports"
+
+    if reports_dir.exists():
+        if os.name == "nt":
+            os.startfile(reports_dir)
+    else:
+        messagebox.showwarning(
+            "Advertencia",
+            "La carpeta 'reports' no existe. Verifica que el motor haya generado resultados.",
+            parent=ventana,
+        )
+
+
+# ==========================================================
 # CARGA DE APUESTAS
 # ==========================================================
 
@@ -317,6 +335,13 @@ def construir_gui():
 
     boton_analizar = ttk.Button(frame, text="Ejecutar Análisis", command=iniciar_analisis)
     boton_analizar.pack(pady=10)
+
+    boton_abrir_resultados = ttk.Button(
+        frame,
+        text="Abrir carpeta de resultados",
+        command=lambda: abrir_carpeta_resultados(ventana),
+    )
+    boton_abrir_resultados.pack()
 
     ventana.mainloop()
 
