@@ -1,3 +1,4 @@
+
 import os
 import sys
 import threading
@@ -17,21 +18,30 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 # PROJECT_ROOT → carpeta principal /Python
 PROJECT_ROOT = BASE_DIR.parent
 
-# Insertar rutas si no están presentes
+# Insertar rutas base en sys.path si no están presentes
 for ruta in (PROJECT_ROOT, BASE_DIR):
     ruta_str = str(ruta)
     if ruta_str not in sys.path:
         sys.path.insert(0, ruta_str)
 
-# Importar el motor desde el paquete correcto
-from motor.motor_hidding_bonus import ejecutar_motor_completo
+# Directorio del motor (src/motor)  # CAMBIO
+MOTOR_DIR = BASE_DIR / "motor"      # CAMBIO
+if str(MOTOR_DIR) not in sys.path:  # CAMBIO
+    sys.path.insert(0, str(MOTOR_DIR))  # CAMBIO
+
+# Importar el motor desde el módulo correcto  # CAMBIO
+from motor_hidding_bonus import ejecutar_motor_completo  # CAMBIO
 
 
 # ==========================================================
-# FUNCIONES PRINCIPALES
+# CARGA DE APUESTAS
 # ==========================================================
 
 def cargar_apuestas_desde_archivos(lista_archivos):
+    """
+    Carga todos los CSV de la lista y los concatena en un solo DataFrame.
+    Devuelve (df_final, total_registros) o (None, 0) si no se cargó nada.
+    """
     print("\n=== Archivos configurados en la lista ===")
     print(lista_archivos)
     print("========================================\n")
@@ -64,58 +74,172 @@ def cargar_apuestas_desde_archivos(lista_archivos):
 
 
 # ==========================================================
-# INTERFAZ TKINTER (GUI)
+# EJECUCIÓN DEL ANÁLISIS (CON MOTOR)
 # ==========================================================
 
-def ejecutar_analisis(lista_archivos):
-    df, total = cargar_apuestas_desde_archivos(lista_archivos)
-    if df is None:
-        messagebox.showwarning("Advertencia", "No hay archivos válidos para analizar.")
-        return
+def ejecutar_analisis(lista_archivos, ruta_bonus, boton_analizar, progress_bar, ventana):
+    """
+    Ejecuta el análisis en un hilo de fondo, controlando:
+      - logs básicos en consola,
+      - messagebox de éxito/error,
+      - y SIEMPRE reactivando el botón y dejando la barra en 100%.
 
-    print("\nEjecutando motor de riesgo...\n")
-
+    ruta_bonus puede ser None o cadena vacía si no se desea cruzar con bonos.
+    """
     try:
-        ejecutar_motor_completo(df)
-        messagebox.showinfo("Éxito", "El análisis ha finalizado correctamente.")
-    except Exception as e:
-        messagebox.showerror("Error", f"Error ejecutando motor: {e}")
+        # Deshabilitar botón y preparar barra de progreso
+        boton_analizar.config(state="disabled")  # CAMBIO
+        if progress_bar is not None:             # CAMBIO
+            progress_bar["value"] = 0            # CAMBIO
+            progress_bar.start(10)               # CAMBIO: modo indeterminado
 
+        print("\n[GUI] Iniciando carga de archivos...\n")  # CAMBIO
+        df, total = cargar_apuestas_desde_archivos(lista_archivos)
+        if df is None:
+            print("[GUI] No hay archivos válidos para analizar.\n")  # CAMBIO
+            messagebox.showwarning(
+                "Advertencia",
+                "No hay archivos válidos para analizar.",
+                parent=ventana,
+            )
+            return
+
+        print(f"[GUI] Total de registros cargados: {total}")  # CAMBIO
+        print("\n[GUI] Ejecutando motor de riesgo...\n")       # CAMBIO
+
+        # Normalizar ruta de bonos (puede ser opcional)  # CAMBIO
+        ruta_bonus_norm = (ruta_bonus or "").strip()          # CAMBIO
+        if ruta_bonus_norm == "":                             # CAMBIO
+            ruta_bonus_norm = None                            # CAMBIO
+
+        # Llamar al motor con o sin base de bonos             # CAMBIO
+        ejecutar_motor_completo(df, ruta_bonus=ruta_bonus_norm)
+
+        print("\n[GUI] Motor finalizado sin errores.\n")  # CAMBIO
+        messagebox.showinfo(
+            "Éxito",
+            "El análisis ha finalizado correctamente.",
+            parent=ventana,
+        )
+
+    except Exception as e:
+        # Log de error en consola y en popup
+        print("\n[GUI][ERROR] Ocurrió un error durante el análisis:\n")  # CAMBIO
+        print(e)  # CAMBIO
+        messagebox.showerror(
+            "Error",
+            f"Error ejecutando el motor de riesgo:\n{e}",
+            parent=ventana,
+        )
+    finally:
+        # Garantizar que el botón y la barra de progreso se restablecen
+        try:
+            if progress_bar is not None:  # CAMBIO
+                progress_bar.stop()       # CAMBIO
+                progress_bar["value"] = 100  # CAMBIO
+
+            boton_analizar.config(state="normal")  # CAMBIO
+            ventana.update_idletasks()             # CAMBIO
+        except Exception as e_final:
+            # En caso de cualquier problema al reactivar la UI, solo lo registramos
+            print("[GUI][ADVERTENCIA] Error al restablecer la interfaz:", e_final)  # CAMBIO
+
+
+# ==========================================================
+# INTERFAZ TKINTER (GUI)
+# ==========================================================
 
 def construir_gui():
     ventana = tk.Tk()
     ventana.title("Herramienta de Análisis de Riesgo – Nueve11")
-    ventana.geometry("900x600")
+    ventana.geometry("900x700")  # un poco más alta para la barra y bonos  # CAMBIO
 
     frame = ttk.Frame(ventana)
     frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-    label = ttk.Label(frame, text="Archivos CSV para analizar:")
+    # ------------------ Archivos de apuestas ------------------
+    label = ttk.Label(frame, text="Archivos CSV de apuestas para analizar:")
     label.pack()
 
-    caja = scrolledtext.ScrolledText(frame, width=80, height=10)
-    caja.pack(pady=10)
+    caja_apuestas = scrolledtext.ScrolledText(frame, width=80, height=10)
+    caja_apuestas.pack(pady=10)
+
+    # ------------------ Archivo de bonos (opcional) ------------------  # CAMBIO
+    bonus_var = tk.StringVar()  # CAMBIO
+
+    bonus_frame = ttk.Frame(frame)  # CAMBIO
+    bonus_frame.pack(fill="x", pady=(5, 10))  # CAMBIO
+
+    bonus_label = ttk.Label(
+        bonus_frame,
+        text="Archivo de base de bonos (opcional):"
+    )  # CAMBIO
+    bonus_label.pack(anchor="w")  # CAMBIO
+
+    entry_frame = ttk.Frame(bonus_frame)  # CAMBIO
+    entry_frame.pack(fill="x")            # CAMBIO
+
+    bonus_entry = ttk.Entry(
+        entry_frame,
+        textvariable=bonus_var,
+        width=80
+    )  # CAMBIO
+    bonus_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))  # CAMBIO
+
+    def seleccionar_archivo_bonus():  # CAMBIO
+        ruta = filedialog.askopenfilename(
+            title="Seleccionar base de bonos",
+            filetypes=[
+                ("Archivos Excel", "*.xlsx;*.xls"),
+                ("Archivos CSV", "*.csv"),
+                ("Todos los archivos", "*.*"),
+            ],
+        )
+        if ruta:
+            bonus_var.set(ruta)
+
+    boton_bonus = ttk.Button(
+        entry_frame,
+        text="Seleccionar base de bonos",
+        command=seleccionar_archivo_bonus,
+    )  # CAMBIO
+    boton_bonus.pack(side="left")  # CAMBIO
+
+    # ------------------ Barra de progreso ------------------  # CAMBIO
+    progress_bar = ttk.Progressbar(frame, mode="indeterminate")  # CAMBIO
+    progress_bar.pack(fill="x", pady=(5, 10))  # CAMBIO
+
+    # ------------------ Funciones internas de la GUI ------------------
 
     def seleccionar_archivos():
         rutas = filedialog.askopenfilenames(
-            title="Seleccionar archivos CSV",
+            title="Seleccionar archivos CSV de apuestas",
             filetypes=[("CSV Files", "*.csv")]
         )
         if rutas:
-            caja.delete("1.0", tk.END)
+            caja_apuestas.delete("1.0", tk.END)
             for r in rutas:
-                caja.insert(tk.END, r + "\n")
+                caja_apuestas.insert(tk.END, r + "\n")
 
     def iniciar_analisis():
-        contenido = caja.get("1.0", tk.END).strip().split("\n")
+        contenido = caja_apuestas.get("1.0", tk.END).strip().split("\n")
         lista_archivos = [x for x in contenido if x.strip()]
 
         if not lista_archivos:
-            messagebox.showwarning("Advertencia", "No hay archivos para analizar.")
+            messagebox.showwarning("Advertencia", "No hay archivos de apuestas para analizar.")
             return
 
-        hilo = threading.Thread(target=ejecutar_analisis, args=(lista_archivos,))
+        ruta_bonus = bonus_var.get()
+
+        # Lanzar el análisis en un hilo de fondo, pasando botón y barra  # CAMBIO
+        hilo = threading.Thread(
+            target=ejecutar_analisis,
+            args=(lista_archivos, ruta_bonus, boton_analizar, progress_bar, ventana),
+            daemon=True,  # CAMBIO: hilo daemon para que no bloquee cierre
+        )
         hilo.start()
+
+    # ------------------ Botones principales ------------------
 
     boton_archivos = ttk.Button(frame, text="Seleccionar Archivos", command=seleccionar_archivos)
     boton_archivos.pack()
