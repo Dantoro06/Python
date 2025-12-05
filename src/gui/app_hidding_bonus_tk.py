@@ -214,7 +214,11 @@ def ejecutar_analisis(
             "El análisis ha finalizado correctamente.",
             parent=ventana,
         )
-        messagebox.showinfo("Resumen de riesgo", texto_resumen, parent=ventana)
+        messagebox.showinfo(
+            "Resumen de riesgo",
+            texto_resumen,
+            parent=ventana,
+        )
 
     except Exception as e:
         # Log de error en consola y en popup
