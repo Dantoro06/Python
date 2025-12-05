@@ -77,7 +77,16 @@ def cargar_apuestas_desde_archivos(lista_archivos):
 # EJECUCIÓN DEL ANÁLISIS (CON MOTOR)
 # ==========================================================
 
-def ejecutar_analisis(lista_archivos, ruta_bonus, boton_analizar, progress_bar, ventana):
+def ejecutar_analisis(
+    lista_archivos,
+    ruta_bonus,
+    boton_analizar,
+    progress_bar,
+    ventana,
+    tolerancia_cobertura,
+    min_total_apostado,
+    max_apuestas_por_seleccion,
+):
     """
     Ejecuta el análisis en un hilo de fondo, controlando:
       - logs básicos en consola,
@@ -113,7 +122,13 @@ def ejecutar_analisis(lista_archivos, ruta_bonus, boton_analizar, progress_bar, 
             ruta_bonus_norm = None                            # CAMBIO
 
         # Llamar al motor con o sin base de bonos             # CAMBIO
-        ejecutar_motor_completo(df, ruta_bonus=ruta_bonus_norm)
+        ejecutar_motor_completo(
+            df,
+            ruta_bonus=ruta_bonus_norm,
+            tolerancia_cobertura=tolerancia_cobertura,
+            min_total_apostado=min_total_apostado,
+            max_apuestas_por_seleccion=max_apuestas_por_seleccion,
+        )
 
         print("\n[GUI] Motor finalizado sin errores.\n")  # CAMBIO
         messagebox.showinfo(
@@ -156,6 +171,38 @@ def construir_gui():
 
     frame = ttk.Frame(ventana)
     frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+    # ------------------ Parámetros configurables ------------------
+    parametros_frame = ttk.Frame(frame)
+    parametros_frame.pack(fill="x", pady=(0, 10))
+
+    tolerancia_var = tk.StringVar(value="0.25")
+    min_total_var = tk.StringVar(value="0")
+    max_apuestas_var = tk.StringVar(value="20")
+
+    # Fila 1: Tolerancia cobertura
+    ttk.Label(parametros_frame, text="Tolerancia cobertura:").grid(
+        row=0, column=0, sticky="w", padx=(0, 5), pady=2
+    )
+    ttk.Entry(parametros_frame, textvariable=tolerancia_var, width=10).grid(
+        row=0, column=1, sticky="w", padx=(0, 15), pady=2
+    )
+
+    # Fila 2: Mínimo total apostado
+    ttk.Label(parametros_frame, text="Mínimo total apostado:").grid(
+        row=1, column=0, sticky="w", padx=(0, 5), pady=2
+    )
+    ttk.Entry(parametros_frame, textvariable=min_total_var, width=10).grid(
+        row=1, column=1, sticky="w", padx=(0, 15), pady=2
+    )
+
+    # Fila 3: Máx. apuestas por selección
+    ttk.Label(parametros_frame, text="Máx. apuestas por selección:").grid(
+        row=2, column=0, sticky="w", padx=(0, 5), pady=2
+    )
+    ttk.Entry(parametros_frame, textvariable=max_apuestas_var, width=10).grid(
+        row=2, column=1, sticky="w", padx=(0, 15), pady=2
+    )
 
     # ------------------ Archivos de apuestas ------------------
     label = ttk.Label(frame, text="Archivos CSV de apuestas para analizar:")
@@ -231,10 +278,34 @@ def construir_gui():
 
         ruta_bonus = bonus_var.get()
 
+        try:
+            tolerancia_cobertura = float(tolerancia_var.get() or "0.25")
+        except ValueError:
+            tolerancia_cobertura = 0.25
+
+        try:
+            min_total_apostado = float(min_total_var.get() or "0")
+        except ValueError:
+            min_total_apostado = 0.0
+
+        try:
+            max_apuestas_por_seleccion = int(max_apuestas_var.get() or "20")
+        except ValueError:
+            max_apuestas_por_seleccion = 20
+
         # Lanzar el análisis en un hilo de fondo, pasando botón y barra  # CAMBIO
         hilo = threading.Thread(
             target=ejecutar_analisis,
-            args=(lista_archivos, ruta_bonus, boton_analizar, progress_bar, ventana),
+            args=(
+                lista_archivos,
+                ruta_bonus,
+                boton_analizar,
+                progress_bar,
+                ventana,
+                tolerancia_cobertura,
+                min_total_apostado,
+                max_apuestas_por_seleccion,
+            ),
             daemon=True,  # CAMBIO: hilo daemon para que no bloquee cierre
         )
         hilo.start()
