@@ -32,18 +32,15 @@ def _get_col(df: pd.DataFrame, posibles: List[str]) -> str:
     guiones, underscores y posibles BOM reales).
     """
     def normalizar(s: str) -> str:
-        return (
-            str(s)
-            .replace("\ufeff", "")
-            .replace("ï»¿", "")
-            .lower()
-            .strip()
-            .replace(" ", "")
-            .replace("-", "")
-            .replace("_", "")
-        )
+        texto = str(s)
+        texto = texto.replace("\ufeff", "").replace("ï»¿", "")
+        texto = texto.lower().strip()
+        texto = texto.replace(" ", "").replace("-", "").replace("_", "")
+        texto = "".join(ch for ch in texto if ch.isalnum())
+        return texto
 
     cols_norm = {normalizar(c): c for c in df.columns}
+    original_to_norm = {c: normalizar(c) for c in df.columns}
 
     for nombre in posibles:
         clave = normalizar(nombre)
@@ -51,11 +48,24 @@ def _get_col(df: pd.DataFrame, posibles: List[str]) -> str:
             return cols_norm[clave]
 
     for nombre in posibles:
+        norm_pos = normalizar(nombre)
+        candidatos = [
+            original
+            for norm_col, original in cols_norm.items()
+            if norm_pos in norm_col or norm_col in norm_pos
+        ]
+        if len(candidatos) == 1:
+            return candidatos[0]
+
+    for nombre in posibles:
         clave = normalizar(nombre)
         for c in df.columns:
             if clave == normalizar(c):
                 return c
 
+    print(f"[_get_col DEBUG] posibles = {posibles}")
+    print(f"[_get_col DEBUG] columnas originales = {df.columns.tolist()}")
+    print(f"[_get_col DEBUG] columnas normalizadas = {original_to_norm}")
     raise KeyError(f"No se encontró ninguna columna: {posibles}")
 
 
