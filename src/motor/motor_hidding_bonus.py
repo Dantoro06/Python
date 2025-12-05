@@ -1,6 +1,8 @@
 import pandas as pd
 from pathlib import Path
 from typing import List, Tuple, Optional, Callable
+import re
+import unicodedata
 
 # Tipo de callback de progreso: (fase, actual, total)
 ProgressCallback = Optional[Callable[[str, int, int], None]]
@@ -25,30 +27,40 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 # Utilidades internas
 # ============================================================
 
-def _get_col(df: pd.DataFrame, posibles: List[str]) -> str:
+
+def _normalizar_nombre_columna(nombre: str) -> str:
+    s = str(nombre)
+    s = s.replace("\ufeff", "").replace("ï»¿", "")
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = s.lower().strip()
+    s = re.sub(r"[^a-z0-9]", "", s)
+    return s
+
+
+def _get_col(
+    df: pd.DataFrame,
+    posibles: List[str],
+    obligatorio: bool = True,
+    nombre_logico: str = "",
+) -> Optional[str]:
     """
     Devuelve el nombre de columna existente en df que coincida con alguna
-    de las opciones dadas (ignorando mayúsculas/minúsculas, espacios,
-    guiones, underscores y posibles BOM reales).
+    de las opciones dadas, ignorando diferencias de mayúsculas, acentos,
+    guiones, espacios y caracteres no alfanuméricos. Soporta encabezados
+    con BOM y variaciones leves del nombre.
     """
-    def normalizar(s: str) -> str:
-        texto = str(s)
-        texto = texto.replace("\ufeff", "").replace("ï»¿", "")
-        texto = texto.lower().strip()
-        texto = texto.replace(" ", "").replace("-", "").replace("_", "")
-        texto = "".join(ch for ch in texto if ch.isalnum())
-        return texto
 
-    cols_norm = {normalizar(c): c for c in df.columns}
-    original_to_norm = {c: normalizar(c) for c in df.columns}
+    cols_norm = {_normalizar_nombre_columna(c): c for c in df.columns}
+    original_to_norm = {c: _normalizar_nombre_columna(c) for c in df.columns}
 
     for nombre in posibles:
-        clave = normalizar(nombre)
+        clave = _normalizar_nombre_columna(nombre)
         if clave in cols_norm:
             return cols_norm[clave]
 
     for nombre in posibles:
-        norm_pos = normalizar(nombre)
+        norm_pos = _normalizar_nombre_columna(nombre)
         candidatos = [
             original
             for norm_col, original in cols_norm.items()
@@ -56,17 +68,25 @@ def _get_col(df: pd.DataFrame, posibles: List[str]) -> str:
         ]
         if len(candidatos) == 1:
             return candidatos[0]
+        if len(candidatos) > 1:
+            return sorted(candidatos, key=len)[0]
 
     for nombre in posibles:
-        clave = normalizar(nombre)
+        clave = _normalizar_nombre_columna(nombre)
         for c in df.columns:
-            if clave == normalizar(c):
+            if clave == _normalizar_nombre_columna(c):
                 return c
+
+    if not obligatorio:
+        return None
 
     print(f"[_get_col DEBUG] posibles = {posibles}")
     print(f"[_get_col DEBUG] columnas originales = {df.columns.tolist()}")
     print(f"[_get_col DEBUG] columnas normalizadas = {original_to_norm}")
-    raise KeyError(f"No se encontró ninguna columna: {posibles}")
+    referencia = f" para '{nombre_logico}'" if nombre_logico else ""
+    raise KeyError(
+        f"No se encontró ninguna columna compatible{referencia}. Posibles alias: {posibles}"
+    )
 
 
 def _split_teams(event_name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -156,20 +176,56 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
     df = df_apuestas.copy()
 
     # --- Identificación de columnas clave ---
-    col_user = _get_col(df, ["Player Id", "playerid", "userid", "user_id", "player_id"])
-    col_sport = _get_col(df, ["Sport", "Deporte"])
+    col_user = _get_col(
+        df,
+        [
+            "Player Id",
+            "playerid",
+            "userid",
+            "user_id",
+            "player_id",
+            "user",
+            "usuario",
+        ],
+        nombre_logico="user_id",
+    )
+    col_sport = _get_col(
+        df,
+        ["Sport", "Deporte", "sports", "tipo deporte"],
+        nombre_logico="sport",
+    )
     try:
-        col_bet_type = _get_col(df, ["Bet type", "bettype", "bet_type", "BetType", "betType"])
+        col_bet_type = _get_col(
+            df,
+            ["Bet type", "bettype", "bet_type", "BetType", "betType", "tipo apuesta"],
+            nombre_logico="bet_type",
+        )
     except KeyError:
         col_bet_type = None
         print(
             "[Filtro apuesta simple] No se encontraron columnas de tipo de apuesta "
             "(['Bet type', 'bettype']). Se omitirá este filtro."
         )
-    col_status = _get_col(df, ["Status", "Estado"])
-    col_market = _get_col(df, ["Market types", "Market type", "Tipo mercado"])
-    col_event = _get_col(df, ["Event name", "Evento", "Partido"])
-    col_stake = _get_col(df, ["Stake", "Valor apostado", "Bet amount"])
+    col_status = _get_col(
+        df,
+        ["Status", "Estado", "bet status"],
+        nombre_logico="status",
+    )
+    col_market = _get_col(
+        df,
+        ["Market types", "Market type", "Tipo mercado", "market", "market 1x2"],
+        nombre_logico="market",
+    )
+    col_event = _get_col(
+        df,
+        ["Event name", "Evento", "Partido", "match", "event"],
+        nombre_logico="event_name",
+    )
+    col_stake = _get_col(
+        df,
+        ["Stake", "Valor apostado", "Bet amount", "importe"],
+        nombre_logico="stake",
+    )
 
     # Bonus stake opcional
     try:
@@ -180,12 +236,13 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
     # Precio / cuota neta para calcular posible ganancia
     # Idealmente "Net Price", de lo contrario "Price".
     try:
-        col_net_price = _get_col(df, ["Net Price", "Net price"])
+        col_net_price = _get_col(
+            df,
+            ["Net Price", "Net price", "netprice", "price", "cuota", "odd", "odds"],
+            nombre_logico="net_price",
+        )
     except KeyError:
-        try:
-            col_net_price = _get_col(df, ["Price", "Cuota", "Odds"])
-        except KeyError:
-            col_net_price = None
+        col_net_price = None
 
     print("[Filtro deporte] Distintos valores de 'Sport' en la data original:",
           df[col_sport].nunique())
