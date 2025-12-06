@@ -6,14 +6,20 @@ Módulo para construir reportes JSON y aplicación Streamlit interactiva.
 import json
 import os
 import socket
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 import streamlit as st
 import altair as alt
 
-from motor.motor_hidding_bonus import (
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from motor.motor_hidding_bonus import (  # pylint: disable=wrong-import-position
     _contar_niveles,
     actualizar_historico_riesgo,
     ejecutar_motor_completo,
