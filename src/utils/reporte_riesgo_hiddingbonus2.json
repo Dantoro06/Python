@@ -1,0 +1,445 @@
+{
+  "metadata": {
+    "nombre_motor": "HiddingBonusRiskEngine",
+    "version": "1.0.0",
+    "fecha_ejecucion": "2025-11-26T16:11:57",
+    "servidor": "DESKTOP-UACLROB",
+    "archivos_procesados": [
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_big_extra_part1.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_big_extra_part2.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_big_test_part1.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_big_test_part2.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_random_250k_v2.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_riesgo_estandar.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_selfhedging_super.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Python/apuestas_selfhedging_test.csv"
+    ]
+  },
+  "resumen_ejecucion": {
+    "total_transacciones": 2062194,
+    "usuarios_analizados": 191326,
+    "eventos_analizados": 14723,
+    "tiempo_proceso_seg": 1965.64,
+    "ratio_sospecha_global": 0.158417
+  },
+  "estadisticas_riesgo": {
+    "multiusuario": {
+      "casos_totales": 321687,
+      "por_nivel": {
+        "ALTO": 1658,
+        "MEDIO": 608,
+        "BAJO": 319421
+      }
+    },
+    "self_hedging": {
+      "casos_totales": 5000,
+      "por_nivel": {
+        "ALTO": 2000,
+        "MEDIO": 1403,
+        "BAJO": 1597
+      }
+    }
+  },
+  "top_usuarios_riesgo": [
+    {
+      "usuario_id": "8101098.0",
+      "casos_total": 461,
+      "casos_multiusuario": 460,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 21,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8103970.0",
+      "casos_total": 431,
+      "casos_multiusuario": 430,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 19,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8104942.0",
+      "casos_total": 423,
+      "casos_multiusuario": 422,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 16,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8101725.0",
+      "casos_total": 415,
+      "casos_multiusuario": 414,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 21,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8104570.0",
+      "casos_total": 411,
+      "casos_multiusuario": 410,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 22,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8105049.0",
+      "casos_total": 408,
+      "casos_multiusuario": 408,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 19,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "8103185.0",
+      "casos_total": 407,
+      "casos_multiusuario": 406,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 17,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8105700.0",
+      "casos_total": 407,
+      "casos_multiusuario": 407,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 22,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "8104839.0",
+      "casos_total": 403,
+      "casos_multiusuario": 402,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 19,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8104174.0",
+      "casos_total": 398,
+      "casos_multiusuario": 397,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 23,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8104177.0",
+      "casos_total": 397,
+      "casos_multiusuario": 396,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 16,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8103865.0",
+      "casos_total": 392,
+      "casos_multiusuario": 391,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 18,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8104014.0",
+      "casos_total": 390,
+      "casos_multiusuario": 389,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 23,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8100732.0",
+      "casos_total": 385,
+      "casos_multiusuario": 384,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 18,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8101177.0",
+      "casos_total": 383,
+      "casos_multiusuario": 382,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 18,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8105413.0",
+      "casos_total": 383,
+      "casos_multiusuario": 383,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 18,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "8101417.0",
+      "casos_total": 380,
+      "casos_multiusuario": 379,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 20,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8103331.0",
+      "casos_total": 379,
+      "casos_multiusuario": 378,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 21,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8105237.0",
+      "casos_total": 379,
+      "casos_multiusuario": 379,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 17,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "8105794.0",
+      "casos_total": 379,
+      "casos_multiusuario": 379,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 16,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    }
+  ],
+  "top_eventos_sospechosos": [
+    {
+      "evento_id": "Colombia vs. Germany",
+      "usuarios_involucrados": 43,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Brazil vs. Brazil",
+      "usuarios_involucrados": 38,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Spain vs. Colombia",
+      "usuarios_involucrados": 38,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "USA vs. France",
+      "usuarios_involucrados": 38,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Italy vs. Cameroon",
+      "usuarios_involucrados": 37,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Chile vs. Chile",
+      "usuarios_involucrados": 35,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Germany vs. Peru",
+      "usuarios_involucrados": 35,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Chile vs. England",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "England vs. Colombia",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "England vs. Mexico",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Peru vs. Germany",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "USA vs. Colombia",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Argentina vs. Korea",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Spain vs. Korea",
+      "usuarios_involucrados": 34,
+      "fuentes": [
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Brazil vs. Mexico",
+      "usuarios_involucrados": 33,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Chile vs. Mexico",
+      "usuarios_involucrados": 33,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "England vs. France",
+      "usuarios_involucrados": 33,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "France vs. Japan",
+      "usuarios_involucrados": 33,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Italy vs. Korea",
+      "usuarios_involucrados": 33,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Korea vs. France",
+      "usuarios_involucrados": 33,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    }
+  ],
+  "parametros_motor": {
+    "tolerancia_cobertura": 0.05,
+    "min_total_apostado": 0.0,
+    "max_apuestas_por_seleccion": 30
+  }
+}

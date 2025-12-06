@@ -1,0 +1,440 @@
+{
+  "metadata": {
+    "nombre_motor": "HiddingBonusRiskEngine",
+    "version": "1.0.0",
+    "fecha_ejecucion": "2025-12-03T09:43:54",
+    "servidor": "DESKTOP-UACLROB",
+    "archivos_procesados": [
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Nueve11/Knime/Apuestas/1-10.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Nueve11/Knime/Apuestas/11-20.csv",
+      "C:/Users/Administrador/OneDrive - Nueve11/Documentos/nueve11/Nueve11/Knime/Apuestas/21-30.csv"
+    ]
+  },
+  "resumen_ejecucion": {
+    "total_transacciones": 2287355,
+    "usuarios_analizados": 47272,
+    "eventos_analizados": 17251,
+    "tiempo_proceso_seg": 980.45,
+    "ratio_sospecha_global": 0.028326
+  },
+  "estadisticas_riesgo": {
+    "multiusuario": {
+      "casos_totales": 62432,
+      "por_nivel": {
+        "ALTO": 1,
+        "MEDIO": 3039,
+        "BAJO": 59392
+      }
+    },
+    "self_hedging": {
+      "casos_totales": 2360,
+      "por_nivel": {
+        "ALTO": 2018,
+        "MEDIO": 307,
+        "BAJO": 35
+      }
+    }
+  },
+  "top_usuarios_riesgo": [
+    {
+      "usuario_id": "7297692",
+      "casos_total": 1112,
+      "casos_multiusuario": 1110,
+      "casos_self_hedging": 2,
+      "eventos_involucrados": 136,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "8293569",
+      "casos_total": 757,
+      "casos_multiusuario": 756,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 90,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "3310809",
+      "casos_total": 732,
+      "casos_multiusuario": 732,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 121,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "11541028",
+      "casos_total": 722,
+      "casos_multiusuario": 643,
+      "casos_self_hedging": 79,
+      "eventos_involucrados": 109,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "11423488",
+      "casos_total": 636,
+      "casos_multiusuario": 561,
+      "casos_self_hedging": 75,
+      "eventos_involucrados": 123,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "12130513",
+      "casos_total": 612,
+      "casos_multiusuario": 595,
+      "casos_self_hedging": 17,
+      "eventos_involucrados": 87,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "10267317",
+      "casos_total": 589,
+      "casos_multiusuario": 589,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 50,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "12348729",
+      "casos_total": 534,
+      "casos_multiusuario": 533,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 83,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "2582402",
+      "casos_total": 520,
+      "casos_multiusuario": 476,
+      "casos_self_hedging": 44,
+      "eventos_involucrados": 79,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "10363024",
+      "casos_total": 500,
+      "casos_multiusuario": 500,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 40,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "4756663",
+      "casos_total": 481,
+      "casos_multiusuario": 458,
+      "casos_self_hedging": 23,
+      "eventos_involucrados": 124,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "4546147",
+      "casos_total": 460,
+      "casos_multiusuario": 460,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 25,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "10502773",
+      "casos_total": 446,
+      "casos_multiusuario": 445,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 63,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "6206905",
+      "casos_total": 443,
+      "casos_multiusuario": 415,
+      "casos_self_hedging": 28,
+      "eventos_involucrados": 77,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "2170537",
+      "casos_total": 433,
+      "casos_multiusuario": 423,
+      "casos_self_hedging": 10,
+      "eventos_involucrados": 54,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "11950306",
+      "casos_total": 430,
+      "casos_multiusuario": 430,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 46,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "9839941",
+      "casos_total": 428,
+      "casos_multiusuario": 407,
+      "casos_self_hedging": 21,
+      "eventos_involucrados": 59,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "5099821",
+      "casos_total": 421,
+      "casos_multiusuario": 421,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 73,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    },
+    {
+      "usuario_id": "7469960",
+      "casos_total": 421,
+      "casos_multiusuario": 420,
+      "casos_self_hedging": 1,
+      "eventos_involucrados": 41,
+      "tipos_riesgo": [
+        "multiusuario",
+        "self_hedging"
+      ]
+    },
+    {
+      "usuario_id": "4205407",
+      "casos_total": 405,
+      "casos_multiusuario": 405,
+      "casos_self_hedging": 0,
+      "eventos_involucrados": 44,
+      "tipos_riesgo": [
+        "multiusuario"
+      ]
+    }
+  ],
+  "top_eventos_sospechosos": [
+    {
+      "evento_id": "Barcelona Guayaquil vs. Emelec",
+      "usuarios_involucrados": 125,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Independiente del Valle vs. El Nacional",
+      "usuarios_involucrados": 89,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Croatia v Spain",
+      "usuarios_involucrados": 76,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Emelec vs. Gualaceo",
+      "usuarios_involucrados": 65,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Emelec vs. Guarani",
+      "usuarios_involucrados": 57,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "El Nacional vs. Deportivo Cuenca",
+      "usuarios_involucrados": 56,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Xolos de Tijuana vs. Pumas UNAM",
+      "usuarios_involucrados": 54,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Atlético Nacional vs. Deportivo Pasto",
+      "usuarios_involucrados": 50,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "LDU Quito vs. Botafogo-RJ",
+      "usuarios_involucrados": 50,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Deportivo Cuenca vs. Emelec",
+      "usuarios_involucrados": 47,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Deportivo Pasto vs. Rionegro Águilas",
+      "usuarios_involucrados": 47,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Independiente Santa Fe vs. Goiás EC-GO",
+      "usuarios_involucrados": 46,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "LDU Quito vs. Cumbaya FC",
+      "usuarios_involucrados": 46,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Colorado International Soccer Academy vs. Salt City SC",
+      "usuarios_involucrados": 45,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "LDU Quito vs. Libertad Loja",
+      "usuarios_involucrados": 45,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Ecuador U20 vs. Korea Republic U20",
+      "usuarios_involucrados": 44,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Israel U20 vs. Brazil U20",
+      "usuarios_involucrados": 44,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Trindade GO U20 vs. Goias U20",
+      "usuarios_involucrados": 44,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "CA Estudiantes de Caseros vs. El Porvenir (W)",
+      "usuarios_involucrados": 41,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    },
+    {
+      "evento_id": "Haiti vs. Mexico",
+      "usuarios_involucrados": 41,
+      "fuentes": [
+        "multiusuario",
+        "self_hedging"
+      ],
+      "riesgo_maximo": "ALTO"
+    }
+  ],
+  "parametros_motor": {
+    "tolerancia_cobertura": 0.25,
+    "min_total_apostado": 0.0,
+    "max_apuestas_por_seleccion": 20
+  }
+}
