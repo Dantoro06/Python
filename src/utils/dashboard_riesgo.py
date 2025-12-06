@@ -4,7 +4,6 @@ Módulo para construir reportes JSON y aplicación Streamlit interactiva.
 """
 
 import json
-import os
 import socket
 import sys
 from datetime import datetime
@@ -15,7 +14,9 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = REPO_ROOT / "src"
+
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -25,8 +26,11 @@ from motor.motor_hidding_bonus import (  # pylint: disable=wrong-import-position
     ejecutar_motor_completo,
 )
 
-HISTORICO_PATH = "historico_riesgo_hiddingbonus.json"
-REPORTE_ACTUAL_PATH = "reporte_riesgo_hiddingbonus.json"
+DASHBOARD_DIR = REPO_ROOT / "dashboard_pro"
+DASHBOARD_DIR.mkdir(exist_ok=True)
+
+HISTORICO_PATH = DASHBOARD_DIR / "historico_riesgo_hiddingbonus.json"
+REPORTE_ACTUAL_PATH = DASHBOARD_DIR / "reporte_riesgo_hiddingbonus.json"
 
 
 def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
@@ -43,7 +47,7 @@ def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
 
 def actualizar_historico_riesgo(
     reporte_riesgo: dict,
-    ruta_historico: str = HISTORICO_PATH,
+    ruta_historico: Path = HISTORICO_PATH,
 ):
     """Actualiza el archivo histórico con datos del nuevo reporte."""
     meta = reporte_riesgo.get("metadata", {})
@@ -69,17 +73,18 @@ def actualizar_historico_riesgo(
         "casos_self_hedging": int(casos_self),
     }
     
-    if os.path.exists(ruta_historico):
+    if ruta_historico.exists():
         try:
-            with open(ruta_historico, "r", encoding="utf-8-sig") as f:
+            with ruta_historico.open("r", encoding="utf-8-sig") as f:
                 historico = json.load(f)
         except Exception:
             historico = {"ejecuciones": []}
     else:
         historico = {"ejecuciones": []}
-    
+
     historico.setdefault("ejecuciones", []).append(entry)
-    with open(ruta_historico, "w", encoding="utf-8-sig") as f:
+    ruta_historico.parent.mkdir(parents=True, exist_ok=True)
+    with ruta_historico.open("w", encoding="utf-8-sig") as f:
         json.dump(historico, f, ensure_ascii=False, indent=2)
 
 
@@ -264,7 +269,7 @@ def generar_reporte_json(
     min_total_apostado: Optional[float] = None,
     max_apuestas_por_seleccion: Optional[int] = None,
     tiempo_proceso_seg: Optional[float] = None,
-    nombre_archivo: str = "reporte_riesgo_hiddingbonus.json",
+    nombre_archivo: Path = REPORTE_ACTUAL_PATH,
 ) -> dict:
     """Genera y guarda un reporte JSON de riesgo, actualiza histórico."""
     reporte_riesgo = construir_reporte_riesgo_dict(
@@ -279,7 +284,10 @@ def generar_reporte_json(
         tiempo_proceso_seg=tiempo_proceso_seg,
     )
 
-    with open(nombre_archivo, "w", encoding="utf-8-sig") as f:
+    nombre_archivo = Path(nombre_archivo)
+    nombre_archivo.parent.mkdir(parents=True, exist_ok=True)
+
+    with nombre_archivo.open("w", encoding="utf-8-sig") as f:
         json.dump(reporte_riesgo, f, ensure_ascii=False, indent=2)
 
     print("\n" + "=" * 60)
@@ -295,13 +303,15 @@ def generar_reporte_json(
     return reporte_riesgo
 
 
-def cargar_historico(path: str = HISTORICO_PATH) -> pd.DataFrame:
+def cargar_historico(path: Path | str = HISTORICO_PATH) -> pd.DataFrame:
     """Carga el histórico de ejecuciones desde JSON y retorna un DataFrame."""
-    if not os.path.exists(path):
+    path = Path(path)
+
+    if not path.exists():
         return pd.DataFrame()
-    
+
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception:
         return pd.DataFrame()
@@ -326,12 +336,14 @@ def cargar_historico(path: str = HISTORICO_PATH) -> pd.DataFrame:
     return df
 
 
-def cargar_reporte_actual(path: str = REPORTE_ACTUAL_PATH) -> dict:
+def cargar_reporte_actual(path: Path | str = REPORTE_ACTUAL_PATH) -> dict:
     """Carga el reporte actual (última ejecución) desde JSON."""
-    if not os.path.exists(path):
+    path = Path(path)
+
+    if not path.exists():
         return {}
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with path.open("r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
