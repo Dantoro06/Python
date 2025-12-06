@@ -1,74 +1,92 @@
+import sys
+import os
+import json
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
-st.title("🔥 Abuso de Bonus — Análisis Avanzado")
+# FIX de rutas (equivalente a app_hidding_bonus_tk.py)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_PATH = BASE_DIR / "abuso_bonus_total.xlsx"
+from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
+
+REPORTS_DIR = (
+    Path(PROJECT_ROOT) / "reports"
+    if (Path(PROJECT_ROOT) / "reports").exists()
+    else Path(BASE_DIR) / "reports"
+)
+DATA_PATH = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json"
 
 
-def load_abuse_data(path: Path):
-    try:
-        return pd.read_excel(path)
-    except Exception as exc:  # noqa: BLE001
-        st.error(f"No se pudo leer {path.name}: {exc}")
+def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
+    if not path.exists():
+        st.warning(
+            "No se encontró reporte_riesgo_hiddingbonus.json en reports/. Ejecuta el motor "
+            "o coloca el archivo en la carpeta indicada."
+        )
         return None
 
-
-def render_tables(df: pd.DataFrame):
-    st.subheader("Tabla consolidada")
-    st.dataframe(df, use_container_width=True)
-
-
-def render_level_distribution(df: pd.DataFrame):
-    if "nivel_abuso" not in df.columns:
-        return
-
-    st.subheader("Distribución por nivel de abuso")
-    df_lvl = df["nivel_abuso"].value_counts().reset_index()
-    df_lvl.columns = ["Nivel", "Casos"]
-    chart = alt.Chart(df_lvl).mark_bar().encode(x="Nivel:N", y="Casos:Q")
-    st.altair_chart(chart, use_container_width=True)
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        st.error("El archivo de reporte no contiene JSON válido.")
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"No se pudo leer el reporte: {exc}")
+    return None
 
 
-def render_bonus_vs_gain(df: pd.DataFrame):
-    required_cols = {"monto_bono", "ganancia_estimada"}
-    if not required_cols.issubset(df.columns):
-        return
-
-    st.subheader("Bono vs Ganancia Estimada")
-    chart = (
-        alt.Chart(df)
-        .mark_circle(size=80)
-        .encode(
-            x="monto_bono:Q",
-            y="ganancia_estimada:Q",
-            color="nivel_abuso:N",
-            tooltip=["user_id", "monto_bono", "ganancia_estimada", "nivel_abuso"],
-        )
+def _df_niveles(estadisticas: Dict[str, Any], clave: str) -> pd.DataFrame:
+    datos = estadisticas.get(clave, {}) or {}
+    conteos = datos.get("por_nivel", {}) if isinstance(datos, dict) else {}
+    return pd.DataFrame(
+        [
+            {"Nivel": nivel, "Casos": conteos.get(nivel, 0)}
+            for nivel in ["ALTO", "MEDIO", "BAJO"]
+        ]
     )
-    st.altair_chart(chart, use_container_width=True)
 
 
 def render_abuse_view():
-    if not DATA_PATH.exists():
-        st.warning(
-            "No se encontró abuso_bonus_total.xlsx en la carpeta raíz. Agrega el archivo"
-            " y recarga la app."
+    st.title("🔥 Abuso de Bonus — Multiusuario y Self-Hedging")
+
+    report = cargar_reporte()
+    if not report:
+        return
+
+    estadisticas = report.get("estadisticas_riesgo", {})
+    multi_df = _df_niveles(estadisticas, "multiusuario")
+    self_df = _df_niveles(estadisticas, "self_hedging")
+
+    col1, col2 = st.columns(2)
+    col1.metric("Casos multiusuario", estadisticas.get("multiusuario", {}).get("casos_totales", 0))
+    col2.metric("Casos self-hedging", estadisticas.get("self_hedging", {}).get("casos_totales", 0))
+
+    st.caption(f"Fuente: {DATA_PATH}")
+
+    st.subheader("Distribución de niveles de riesgo")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.write("Multiusuario")
+        chart_multi = alt.Chart(multi_df).mark_bar(color="#1f77b4").encode(
+            x="Nivel:N", y="Casos:Q", tooltip=["Nivel", "Casos"]
         )
-        return
+        st.altair_chart(chart_multi, use_container_width=True)
+        st.dataframe(multi_df, use_container_width=True)
 
-    df = load_abuse_data(DATA_PATH)
-    if df is None:
-        return
-
-    st.caption(f"Fuente: {DATA_PATH.name}")
-    render_tables(df)
-    render_level_distribution(df)
-    render_bonus_vs_gain(df)
+    with col_b:
+        st.write("Self-Hedging")
+        chart_self = alt.Chart(self_df).mark_bar(color="#ff7f0e").encode(
+            x="Nivel:N", y="Casos:Q", tooltip=["Nivel", "Casos"]
+        )
+        st.altair_chart(chart_self, use_container_width=True)
+        st.dataframe(self_df, use_container_width=True)
 
 
 render_abuse_view()

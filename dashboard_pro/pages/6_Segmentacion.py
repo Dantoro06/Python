@@ -1,60 +1,120 @@
+import sys
+import os
+import json
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
-st.title("📊 Segmentación de Usuarios — PRO")
+# FIX de rutas (equivalente a app_hidding_bonus_tk.py)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_PATH = BASE_DIR / "abuso_bonus_total.xlsx"
+from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
+
+REPORTS_DIR = (
+    Path(PROJECT_ROOT) / "reports"
+    if (Path(PROJECT_ROOT) / "reports").exists()
+    else Path(BASE_DIR) / "reports"
+)
+REPORTE_PATH = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json"
+HISTORICO_PATH = REPORTS_DIR / "historico_riesgo_hiddingbonus.json"
 
 
-def load_abuse_data(path: Path):
+def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
+    if not path.exists():
+        return None
     try:
-        return pd.read_excel(path)
-    except Exception as exc:  # noqa: BLE001
-        st.error(f"No se pudo leer {path.name}: {exc}")
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:  # noqa: BLE001
         return None
 
 
-def render_segmentation(df: pd.DataFrame):
-    required_cols = {"score_abuso", "monto_bono"}
-    if not required_cols.issubset(df.columns):
-        st.info(
-            "El archivo no contiene las columnas necesarias (score_abuso, monto_bono) para"
-            " segmentar usuarios."
-        )
-        return
+def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:  # noqa: BLE001
+        return pd.DataFrame()
 
-    st.subheader("Segmentación básica por score vs monto bono")
-    chart = (
-        alt.Chart(df)
-        .mark_circle(size=60)
-        .encode(
-            x="monto_bono:Q",
-            y="score_abuso:Q",
-            color="nivel_abuso:N",
-            tooltip=["user_id", "score_abuso", "monto_bono", "nivel_abuso"],
+    ejecuciones = data.get("ejecuciones", [])
+    if not ejecuciones:
+        return pd.DataFrame()
+
+    df_hist = pd.DataFrame(ejecuciones)
+    if "fecha_ejecucion" in df_hist.columns:
+        df_hist["fecha_ejecucion"] = pd.to_datetime(
+            df_hist["fecha_ejecucion"], errors="coerce"
         )
-    )
-    st.altair_chart(chart, use_container_width=True)
+    return df_hist
 
 
 def render_segmentation_view():
-    if not DATA_PATH.exists():
+    st.title("📊 Segmentación de Riesgo — PRO")
+
+    report = cargar_reporte()
+    historico_df = cargar_historico()
+
+    if historico_df.empty:
         st.warning(
-            "No hay archivo para segmentar. Coloca abuso_bonus_total.xlsx en la carpeta"
-            " raíz y recarga la app."
+            "No hay histórico disponible para segmentar. Ejecuta el motor para generar "
+            "reports/historico_riesgo_hiddingbonus.json."
         )
+    else:
+        st.subheader("Evolución de casos por tipo")
+        if {"casos_multiusuario", "casos_self_hedging"}.issubset(historico_df.columns):
+            melted = historico_df.melt(
+                id_vars=["fecha_ejecucion"],
+                value_vars=["casos_multiusuario", "casos_self_hedging"],
+                var_name="tipo",
+                value_name="casos",
+            )
+            chart = (
+                alt.Chart(melted)
+                .mark_area(opacity=0.5)
+                .encode(
+                    x="fecha_ejecucion:T",
+                    y="casos:Q",
+                    color=alt.Color(
+                        "tipo:N",
+                        scale=alt.Scale(
+                            domain=["casos_multiusuario", "casos_self_hedging"],
+                            range=["#1f77b4", "#ff7f0e"],
+                        ),
+                        title="Tipo",
+                    ),
+                    tooltip=["fecha_ejecucion:T", "tipo:N", "casos:Q"],
+                )
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+        if "ratio_sospecha_global" in historico_df.columns:
+            st.subheader("Ratio de sospecha global")
+            graf_ratio = (
+                alt.Chart(historico_df)
+                .mark_line(point=True)
+                .encode(
+                    x="fecha_ejecucion:T",
+                    y="ratio_sospecha_global:Q",
+                    tooltip=["fecha_ejecucion:T", "ratio_sospecha_global:Q"],
+                )
+            )
+            st.altair_chart(graf_ratio, use_container_width=True)
+
+    st.subheader("Parámetros de la última ejecución")
+    if not report:
+        st.info("Aún no hay reporte actual para mostrar parámetros.")
         return
 
-    df = load_abuse_data(DATA_PATH)
-    if df is None:
-        return
-
-    st.caption(f"Fuente: {DATA_PATH.name}")
-    render_segmentation(df)
+    params = report.get("parametros_motor", {})
+    st.json(params, expanded=False)
 
 
 render_segmentation_view()
