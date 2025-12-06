@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 from tkinter import ttk  # Barra de progreso
@@ -12,6 +13,17 @@ from motor_hidding_bonus import (
     ejecutar_self_hedging,
     generar_reporte_json,
 )
+
+
+BASE_DIR = Path(__file__).resolve().parent
+DASHBOARD_DIR = BASE_DIR / "dashboard_pro"
+DASHBOARD_DIR.mkdir(exist_ok=True)
+
+
+def ruta_dashboard(nombre: str) -> Path:
+    """Devuelve la ruta completa dentro de dashboard_pro para un archivo dado."""
+
+    return DASHBOARD_DIR / nombre
 
 
 # -------------------------------------------------------
@@ -291,6 +303,10 @@ class MotorHiddingBonusApp:
 
         total_apuestas_original = len(df_apuestas)
 
+        # Configuración de salida alineada con dashboard_pro
+        salida_dir = DASHBOARD_DIR
+        print(f"Los archivos para dashboard_pro se guardarán en: {salida_dir}\n")
+
         # Medir tiempo de análisis
         t0 = time.time()
 
@@ -312,8 +328,8 @@ class MotorHiddingBonusApp:
                     df_apuestas,
                     tolerancia_cobertura=tolerancia,
                     min_total_apostado=min_total,
-                    ruta_base="hidding_bonus_base.xlsx",
-                    ruta_multi="hidding_bonus_multiusuario.xlsx",
+                    ruta_base=str(ruta_dashboard("hidding_bonus_base.xlsx")),
+                    ruta_multi=str(ruta_dashboard("hidding_bonus_multiusuario.xlsx")),
                     max_apuestas_por_seleccion=max_por_sel,
                     progress_callback=self.actualizar_progreso,
                 )
@@ -344,7 +360,7 @@ class MotorHiddingBonusApp:
             try:
                 df_self = ejecutar_self_hedging(
                     df_base,
-                    ruta_resultados="hidding_bonus_selfhedging.xlsx",
+                    ruta_resultados=str(ruta_dashboard("hidding_bonus_selfhedging.xlsx")),
                     progress_callback=self.actualizar_progreso,
                 )
             except Exception as e:
@@ -364,17 +380,21 @@ class MotorHiddingBonusApp:
                 print("⚠ No se detectaron patrones de self-hedging con las condiciones actuales.\n")
 
             # 6) Resumen de archivos generados (Excel)
-            print("\nArchivos Excel generados en la carpeta actual:")
-            print(" - hidding_bonus_base.xlsx")
-            print(" - hidding_bonus_multiusuario.xlsx")
-            print(" - hidding_bonus_multiusuario_trios_detalle.xlsx")
-            print(" - hidding_bonus_selfhedging.xlsx")
-            print(" - hidding_bonus_selfhedging_detalle.xlsx")
+            print("\nArchivos Excel generados en dashboard_pro:")
+            for nombre in [
+                "hidding_bonus_base.xlsx",
+                "hidding_bonus_multiusuario.xlsx",
+                "hidding_bonus_multiusuario_trios_detalle.xlsx",
+                "hidding_bonus_selfhedging.xlsx",
+                "hidding_bonus_selfhedging_detalle.xlsx",
+            ]:
+                print(f" - {ruta_dashboard(nombre)}")
             print("\n✔ Análisis completado.\n")
 
             tiempo_total = time.time() - t0
 
             # 7) NUEVO: Generar reporte JSON de riesgo
+            ruta_reporte = ruta_dashboard("reporte_riesgo_hiddingbonus.json")
             try:
                 generar_reporte_json(
                     df_base=df_base,
@@ -386,7 +406,7 @@ class MotorHiddingBonusApp:
                     min_total_apostado=min_total,
                     max_apuestas_por_seleccion=max_por_sel,
                     tiempo_proceso_seg=tiempo_total,
-                    nombre_archivo="reporte_riesgo_hiddingbonus.json",
+                    nombre_archivo=str(ruta_reporte),
                 )
             except Exception as e:
                 print("\n[ADVERTENCIA] No se pudo generar el reporte JSON de riesgo:")
@@ -400,7 +420,8 @@ class MotorHiddingBonusApp:
             messagebox.showinfo(
                 "Análisis completado",
                 "El análisis ha finalizado.\n"
-                "Se generaron archivos Excel y el archivo 'reporte_riesgo_hiddingbonus.json' en la carpeta actual.",
+                f"Se generaron archivos Excel y el archivo 'reporte_riesgo_hiddingbonus.json'"
+                f" en: {salida_dir}",
             )
 
         finally:
