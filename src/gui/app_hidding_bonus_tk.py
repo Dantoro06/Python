@@ -168,20 +168,21 @@ def ejecutar_analisis(
         top_users = reporte.get("top_usuarios_riesgo", [])
         top_events = reporte.get("top_eventos_sospechosos", [])
 
-        total_tx = resumen.get("total_transacciones", 0)
-        usuarios = resumen.get("usuarios_analizados", 0)
-        eventos = resumen.get("eventos_analizados", 0)
+        total_tx = resumen.get("total_transacciones", 0) or 0
+        usuarios = resumen.get("usuarios_analizados", 0) or 0
+        eventos = resumen.get("eventos_analizados", 0) or 0
         ratio = resumen.get("ratio_sospecha_global", 0.0) or 0.0
         casos_multi = multi.get("casos_totales", 0) or 0
         casos_self = selfh.get("casos_totales", 0) or 0
 
-        resumen_gui = []
-        resumen_gui.append(f"Total transacciones analizadas: {total_tx}")
-        resumen_gui.append(f"Usuarios analizados: {usuarios}")
-        resumen_gui.append(f"Eventos analizados: {eventos}")
-        resumen_gui.append(f"Casos multiusuario detectados: {casos_multi}")
-        resumen_gui.append(f"Casos self-hedging detectados: {casos_self}")
-        resumen_gui.append(f"Ratio global de sospecha: {ratio:.4%}")
+        resumen_gui = [
+            f"Total transacciones analizadas: {total_tx}",
+            f"Usuarios analizados: {usuarios}",
+            f"Eventos analizados: {eventos}",
+            f"Casos multiusuario detectados: {casos_multi}",
+            f"Casos self-hedging detectados: {casos_self}",
+            f"Ratio global de sospecha: {ratio:.4%}",
+        ]
 
         if top_users:
             resumen_gui.append("")

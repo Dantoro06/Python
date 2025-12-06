@@ -8,6 +8,12 @@ import pandas as pd
 
 from motor.motor_hidding_bonus import ejecutar_motor_completo
 
+from motor.motor_hidding_bonus import (
+    _contar_niveles,
+    actualizar_historico_riesgo,
+    ejecutar_motor_completo,
+)
+
 HISTORICO_PATH = "historico_riesgo_hiddingbonus.json"
 REPORTE_ACTUAL_PATH = "reporte_riesgo_hiddingbonus.json"
 
@@ -314,8 +320,252 @@ if __name__ == "__main__":
         if not os.path.exists(path):
             return pd.DataFrame()
 
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+def construir_reporte_riesgo_dict(
+    df_base: pd.DataFrame,
+    df_multi: Optional[pd.DataFrame] = None,
+    df_self: Optional[pd.DataFrame] = None,
+    archivos_entrada: Optional[list] = None,
+    total_apuestas_original: Optional[int] = None,
+    tolerancia_cobertura: Optional[float] = None,
+    min_total_apostado: Optional[float] = None,
+    max_apuestas_por_seleccion: Optional[int] = None,
+    tiempo_proceso_seg: Optional[float] = None,
+) -> dict:
+    """
+    Construye y devuelve el diccionario `reporte_riesgo` sin guardarlo a disco.
+    La estructura es idéntica a la que genera `generar_reporte_json`.
+    """
+
+    df_multi = df_multi if df_multi is not None else pd.DataFrame()
+    df_self = df_self if df_self is not None else pd.DataFrame()
+    archivos_entrada = archivos_entrada or []
+
+    total_base = len(df_base) if df_base is not None else 0
+    total_transacciones = (
+        int(total_apuestas_original) if total_apuestas_original is not None else int(total_base)
+    )
+
+    usuarios_analizados = 0
+    eventos_analizados = 0
+    if df_base is not None and not df_base.empty:
+        if "user_id" in df_base.columns:
+            usuarios_analizados = int(df_base["user_id"].nunique())
+        if "event_name" in df_base.columns:
+            eventos_analizados = int(df_base["event_name"].nunique())
+
+    casos_multi = len(df_multi) if not df_multi.empty else 0
+    casos_self = len(df_self) if not df_self.empty else 0
+    casos_sospechosos_totales = casos_multi + casos_self
+
+    if total_transacciones > 0:
+        ratio_sospecha_global = casos_sospechosos_totales / total_transacciones
+    else:
+        ratio_sospecha_global = 0.0
+
+    niveles_multi = _contar_niveles(df_multi, "nivel_riesgo_multi")
+    niveles_self = _contar_niveles(df_self, "nivel_riesgo_self")
+
+    usuarios_stats = {}
+
+    if not df_multi.empty and "usuarios_implicados" in df_multi.columns:
+        for _, row in df_multi.iterrows():
+            ev_name = row.get("event_name", "")
+            usuarios_str = str(row["usuarios_implicados"])
+            usuarios = [u.strip() for u in usuarios_str.split("|") if u.strip()]
+            for u in usuarios:
+                if u not in usuarios_stats:
+                    usuarios_stats[u] = {
+                        "casos_multi": 0,
+                        "casos_self": 0,
+                        "eventos": set(),
+                    }
+                usuarios_stats[u]["casos_multi"] += 1
+                if ev_name:
+                    usuarios_stats[u]["eventos"].add(ev_name)
+
+    if not df_self.empty and "usuarios_implicados" in df_self.columns:
+        for _, row in df_self.iterrows():
+            ev_name = row.get("event_name", "")
+            u = str(row["usuarios_implicados"])
+            if u not in usuarios_stats:
+                usuarios_stats[u] = {
+                    "casos_multi": 0,
+                    "casos_self": 0,
+                    "eventos": set(),
+                }
+            usuarios_stats[u]["casos_self"] += 1
+            if ev_name:
+                usuarios_stats[u]["eventos"].add(ev_name)
+
+    top_usuarios_riesgo = []
+    for u, data_u in usuarios_stats.items():
+        total_casos = data_u["casos_multi"] + data_u["casos_self"]
+        tipos = []
+        if data_u["casos_multi"] > 0:
+            tipos.append("multiusuario")
+        if data_u["casos_self"] > 0:
+            tipos.append("self_hedging")
+        top_usuarios_riesgo.append(
+            {
+                "usuario_id": u,
+                "casos_total": total_casos,
+                "casos_multiusuario": data_u["casos_multi"],
+                "casos_self_hedging": data_u["casos_self"],
+                "eventos_involucrados": len(data_u["eventos"]),
+                "tipos_riesgo": tipos,
+            }
+        )
+
+    top_usuarios_riesgo.sort(key=lambda x: x["casos_total"], reverse=True)
+    top_usuarios_riesgo = top_usuarios_riesgo[:20]
+
+    eventos_stats = {}
+
+    def _agg_eventos(df_local: pd.DataFrame, fuente: str, col_nivel: str):
+        if df_local.empty:
+            return
+        for _, row in df_local.iterrows():
+            ev_name = row.get("event_name", "")
+            if not ev_name:
+                continue
+            usuarios_str = str(row.get("usuarios_implicados", ""))
+            usuarios = [u.strip() for u in usuarios_str.split("|") if u.strip()]
+            if not usuarios:
+                usuarios = [usuarios_str.strip()] if usuarios_str.strip() else []
+
+            nivel = str(row.get(col_nivel, "")).upper()
+
+            if ev_name not in eventos_stats:
+                eventos_stats[ev_name] = {
+                    "usuarios": set(),
+                    "fuentes": set(),
+                    "niveles": set(),
+                }
+            eventos_stats[ev_name]["fuentes"].add(fuente)
+            for u in usuarios:
+                if u:
+                    eventos_stats[ev_name]["usuarios"].add(u)
+            if nivel:
+                eventos_stats[ev_name]["niveles"].add(nivel)
+
+    _agg_eventos(df_multi, "multiusuario", "nivel_riesgo_multi")
+    _agg_eventos(df_self, "self_hedging", "nivel_riesgo_self")
+
+    def _max_riesgo(niveles: set) -> str:
+        if not niveles:
+            return ""
+        prioridad = {"ALTO": 3, "MEDIO": 2, "BAJO": 1}
+        mejor_nivel = None
+        mejor_score = 0
+        for n in niveles:
+            score = prioridad.get(n.upper(), 0)
+            if score > mejor_score:
+                mejor_score = score
+                mejor_nivel = n.upper()
+        return mejor_nivel or ""
+
+    top_eventos_sospechosos = []
+    for ev_name, data_ev in eventos_stats.items():
+        fuentes = list(sorted(data_ev["fuentes"]))
+        riesgo_max = _max_riesgo(data_ev["niveles"])
+        top_eventos_sospechosos.append(
+            {
+                "evento_id": ev_name,
+                "usuarios_involucrados": len(data_ev["usuarios"]),
+                "fuentes": fuentes,
+                "riesgo_maximo": riesgo_max,
+            }
+        )
+
+    top_eventos_sospechosos.sort(
+        key=lambda x: (x["riesgo_maximo"] != "ALTO", -x["usuarios_involucrados"])
+    )
+    top_eventos_sospechosos = top_eventos_sospechosos[:20]
+
+    parametros_motor = {
+        "tolerancia_cobertura": tolerancia_cobertura,
+        "min_total_apostado": min_total_apostado,
+        "max_apuestas_por_seleccion": max_apuestas_por_seleccion,
+    }
+
+    reporte_riesgo = {
+        "metadata": {
+            "nombre_motor": "HiddingBonusRiskEngine",
+            "version": "1.0.0",
+            "fecha_ejecucion": datetime.now().isoformat(timespec="seconds"),
+            "servidor": socket.gethostname(),
+            "archivos_procesados": list(archivos_entrada),
+        },
+        "resumen_ejecucion": {
+            "total_transacciones": total_transacciones,
+            "usuarios_analizados": usuarios_analizados,
+            "eventos_analizados": eventos_analizados,
+            "tiempo_proceso_seg": round(tiempo_proceso_seg, 2)
+            if tiempo_proceso_seg is not None
+            else None,
+            "ratio_sospecha_global": round(ratio_sospecha_global, 6),
+        },
+        "estadisticas_riesgo": {
+            "multiusuario": {
+                "casos_totales": casos_multi,
+                "por_nivel": niveles_multi,
+            },
+            "self_hedging": {
+                "casos_totales": casos_self,
+                "por_nivel": niveles_self,
+            },
+        },
+        "top_usuarios_riesgo": top_usuarios_riesgo,
+        "top_eventos_sospechosos": top_eventos_sospechosos,
+        "parametros_motor": parametros_motor,
+    }
+
+    return reporte_riesgo
+
+
+def generar_reporte_json(
+    df_base: pd.DataFrame,
+    df_multi: Optional[pd.DataFrame] = None,
+    df_self: Optional[pd.DataFrame] = None,
+    archivos_entrada: Optional[list] = None,
+    total_apuestas_original: Optional[int] = None,
+    tolerancia_cobertura: Optional[float] = None,
+    min_total_apostado: Optional[float] = None,
+    max_apuestas_por_seleccion: Optional[int] = None,
+    tiempo_proceso_seg: Optional[float] = None,
+    nombre_archivo: str = "reporte_riesgo_hiddingbonus.json",
+) -> dict:
+    reporte_riesgo = construir_reporte_riesgo_dict(
+        df_base=df_base,
+        df_multi=df_multi,
+        df_self=df_self,
+        archivos_entrada=archivos_entrada,
+        total_apuestas_original=total_apuestas_original,
+        tolerancia_cobertura=tolerancia_cobertura,
+        min_total_apostado=min_total_apostado,
+        max_apuestas_por_seleccion=max_apuestas_por_seleccion,
+        tiempo_proceso_seg=tiempo_proceso_seg,
+    )
+
+    with open(nombre_archivo, "w", encoding="utf-8-sig") as f:
+        json.dump(reporte_riesgo, f, ensure_ascii=False, indent=2)
+
+    print("\n============================================================")
+    print(f"📁 Reporte de riesgo guardado en: {nombre_archivo}")
+    print("   → Este archivo se puede usar directamente en Gemini AI Studio")
+    print("============================================================\n")
+
+    try:
+        actualizar_historico_riesgo(reporte_riesgo)
+    except Exception as e:
+        print(f"[WARN] No se pudo actualizar el histórico de riesgo: {e}")
+
+    return reporte_riesgo
+
+
+# ---------------------------------------------
+# App Streamlit
+# ---------------------------------------------
 
         ejecuciones = data.get("ejecuciones", [])
         if not ejecuciones:
