@@ -135,7 +135,6 @@ def ejecutar_analisis(
         print(f"[GUI] Total de registros cargados: {total}")  # CAMBIO
         print("\n[GUI] Ejecutando motor de riesgo...\n")       # CAMBIO
 
-        # Normalizar ruta de bonos (puede ser opcional)  # CAMBIO
         ruta_bonus_norm = (ruta_bonus or "").strip()          # CAMBIO
         if ruta_bonus_norm == "":                             # CAMBIO
             ruta_bonus_norm = None                            # CAMBIO
