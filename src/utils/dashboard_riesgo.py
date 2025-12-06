@@ -26,11 +26,11 @@ from motor.motor_hidding_bonus import (  # pylint: disable=wrong-import-position
     ejecutar_motor_completo,
 )
 
-DASHBOARD_DIR = REPO_ROOT / "dashboard_pro"
-DASHBOARD_DIR.mkdir(exist_ok=True)
+UTILS_DIR = Path(__file__).resolve().parent
+UTILS_DIR.mkdir(exist_ok=True)
 
-HISTORICO_PATH = DASHBOARD_DIR / "historico_riesgo_hiddingbonus.json"
-REPORTE_ACTUAL_PATH = DASHBOARD_DIR / "reporte_riesgo_hiddingbonus.json"
+HISTORICO_PATH = UTILS_DIR / "historico_riesgo_hiddingbonus.json"
+REPORTE_ACTUAL_PATH = UTILS_DIR / "reporte_riesgo_hiddingbonus.json"
 
 
 def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
