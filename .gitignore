@@ -1,22 +1,17 @@
-# === Carpetas pesadas ===
-datasets/
-reports/
+# Local / IDE
+.vscode/
 
-# === Archivos de salida ===
-*.csv
-*.xlsx
-*.json
-
-# === Python cache ===
-__pycache__/
-*.pyc
-
-# === Entornos virtuales ===
-venv/
-env/
-.venv/
-
-# === Configs locales ===
-*.ini
+# Artefactos temporales
+*.patch
+*.tmp
 *.log
-.DS_Store
+Nuevo Documento de texto.txt
+
+# Outputs / reportes (si no quieres versionarlos)
+reports/
+*.xlsx
+*.csv
+
+# Entornos virtuales
+venv*/
+.venv/
