@@ -1,5 +1,8 @@
 import pandas as pd
+from pathlib import Path
 from typing import List, Tuple, Optional, Callable
+import re
+import unicodedata
 
 # Tipo de callback de progreso: (fase, actual, total)
 ProgressCallback = Optional[Callable[[str, int, int], None]]
@@ -12,41 +15,93 @@ import os
 
 
 # ============================================================
+# Rutas de proyecto
+# ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+REPORTS_DIR = PROJECT_ROOT / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ============================================================
 # Utilidades internas
 # ============================================================
 
-def _get_col(df: pd.DataFrame, posibles: List[str]) -> str:
+
+def _normalizar_nombre_columna(nombre: str) -> str:
+    s = str(nombre)
+    s = s.replace("\ufeff", "").replace("ï»¿", "")
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = s.lower().strip()
+    s = re.sub(r"[^a-z0-9]", "", s)
+    return s
+
+
+def normalize_text(valor) -> str:
+    s = "" if valor is None else str(valor)
+    s = s.strip().lower()
+    if "Ã" in s:
+        try:
+            s = s.encode("latin1").decode("utf-8")
+        except Exception:
+            pass
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = re.sub(r"[^a-z0-9\\s]", " ", s)
+    s = re.sub(r"\\s+", " ", s).strip()
+    return s
+
+
+def _get_col(
+    df: pd.DataFrame,
+    posibles: List[str],
+    obligatorio: bool = True,
+    nombre_logico: str = "",
+) -> Optional[str]:
     """
     Devuelve el nombre de columna existente en df que coincida con alguna
-    de las opciones dadas (ignorando mayúsculas/minúsculas, espacios,
-    guiones, underscores y posibles BOM reales).
+    de las opciones dadas, ignorando diferencias de mayúsculas, acentos,
+    guiones, espacios y caracteres no alfanuméricos. Soporta encabezados
+    con BOM y variaciones leves del nombre.
     """
-    def normalizar(s: str) -> str:
-        return (
-            str(s)
-            .replace("\ufeff", "")
-            .replace("ï»¿", "")
-            .lower()
-            .strip()
-            .replace(" ", "")
-            .replace("-", "")
-            .replace("_", "")
-        )
 
-    cols_norm = {normalizar(c): c for c in df.columns}
+    cols_norm = {_normalizar_nombre_columna(c): c for c in df.columns}
+    original_to_norm = {c: _normalizar_nombre_columna(c) for c in df.columns}
 
     for nombre in posibles:
-        clave = normalizar(nombre)
+        clave = _normalizar_nombre_columna(nombre)
         if clave in cols_norm:
             return cols_norm[clave]
 
     for nombre in posibles:
-        clave = normalizar(nombre)
+        norm_pos = _normalizar_nombre_columna(nombre)
+        candidatos = [
+            original
+            for norm_col, original in cols_norm.items()
+            if norm_pos in norm_col or norm_col in norm_pos
+        ]
+        if len(candidatos) == 1:
+            return candidatos[0]
+        if len(candidatos) > 1:
+            return sorted(candidatos, key=len)[0]
+
+    for nombre in posibles:
+        clave = _normalizar_nombre_columna(nombre)
         for c in df.columns:
-            if clave == normalizar(c):
+            if clave == _normalizar_nombre_columna(c):
                 return c
 
-    raise KeyError(f"No se encontró ninguna columna: {posibles}")
+    if not obligatorio:
+        return None
+
+    print(f"[_get_col DEBUG] posibles = {posibles}")
+    print(f"[_get_col DEBUG] columnas originales = {df.columns.tolist()}")
+    print(f"[_get_col DEBUG] columnas normalizadas = {original_to_norm}")
+    referencia = f" para '{nombre_logico}'" if nombre_logico else ""
+    raise KeyError(
+        f"No se encontró ninguna columna compatible{referencia}. Posibles alias: {posibles}"
+    )
 
 
 def _split_teams(event_name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -136,13 +191,56 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
     df = df_apuestas.copy()
 
     # --- Identificación de columnas clave ---
-    col_user = _get_col(df, ["Player Id", "playerid", "userid", "user_id", "player_id"])
-    col_sport = _get_col(df, ["Sport", "Deporte"])
-    col_bet_type = _get_col(df, ["Bet type", "bettype", "bet_type", "BetType", "betType"])
-    col_status = _get_col(df, ["Status", "Estado"])
-    col_market = _get_col(df, ["Market types", "Market type", "Tipo mercado"])
-    col_event = _get_col(df, ["Event name", "Evento", "Partido"])
-    col_stake = _get_col(df, ["Stake", "Valor apostado", "Bet amount"])
+    col_user = _get_col(
+        df,
+        [
+            "Player Id",
+            "playerid",
+            "userid",
+            "user_id",
+            "player_id",
+            "user",
+            "usuario",
+        ],
+        nombre_logico="user_id",
+    )
+    col_sport = _get_col(
+        df,
+        ["Sport", "Deporte", "sports", "tipo deporte"],
+        nombre_logico="sport",
+    )
+    try:
+        col_bet_type = _get_col(
+            df,
+            ["Bet type", "bettype", "bet_type", "BetType", "betType", "tipo apuesta"],
+            nombre_logico="bet_type",
+        )
+    except KeyError:
+        col_bet_type = None
+        print(
+            "[Filtro apuesta simple] No se encontraron columnas de tipo de apuesta "
+            "(['Bet type', 'bettype']). Se omitirá este filtro."
+        )
+    col_status = _get_col(
+        df,
+        ["Status", "Estado", "bet status"],
+        nombre_logico="status",
+    )
+    col_market = _get_col(
+        df,
+        ["Market types", "Market type", "Tipo mercado", "market", "market 1x2"],
+        nombre_logico="market",
+    )
+    col_event = _get_col(
+        df,
+        ["Event name", "Evento", "Partido", "match", "event"],
+        nombre_logico="event_name",
+    )
+    col_stake = _get_col(
+        df,
+        ["Stake", "Valor apostado", "Bet amount", "importe"],
+        nombre_logico="stake",
+    )
 
     # Bonus stake opcional
     try:
@@ -153,36 +251,50 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
     # Precio / cuota neta para calcular posible ganancia
     # Idealmente "Net Price", de lo contrario "Price".
     try:
-        col_net_price = _get_col(df, ["Net Price", "Net price"])
+        col_net_price = _get_col(
+            df,
+            ["Net Price", "Net price", "netprice", "price", "cuota", "odd", "odds"],
+            nombre_logico="net_price",
+        )
     except KeyError:
-        try:
-            col_net_price = _get_col(df, ["Price", "Cuota", "Odds"])
-        except KeyError:
-            col_net_price = None
+        col_net_price = None
 
     print("[Filtro deporte] Distintos valores de 'Sport' en la data original:",
           df[col_sport].nunique())
 
-    # --- Filtro deporte (fútbol / soccer) ---
-    sport_norm = df[col_sport].astype(str).str.lower()
+    # --- Filtro deporte (futbol / soccer) ---
+    sport_norm = df[col_sport].map(normalize_text)
+    print("[Filtro deporte] Top 10 valores unicos normalizados:",
+          sport_norm.value_counts().head(10).index.tolist())
+
+    sport_map = {
+        "futbol": "soccer",
+        "football": "soccer",
+        "soccer": "soccer",
+    }
+    sport_std = sport_norm.map(lambda s: sport_map.get(s, s))
+    allowed = {"soccer"}
     antes = len(df)
-    mask_s = (
-        sport_norm.str.contains("soccer")
-        | sport_norm.str.contains("futbol")
-        | sport_norm.str.contains("football")
-    )
-    df = df[mask_s].copy()
+    df_filtrado = df[sport_std.isin(allowed)].copy()
     print(f"[Filtro deporte] Registros antes del filtro: {antes}")
-    print(f"[Filtro deporte] Registros después de filtrar fútbol/soccer: {len(df)}")
-    print("[Filtro deporte] Ejemplos de deportes filtrados (normalizados):",
-          sorted(sport_norm[mask_s].unique())[:5])
+    print(f"[Filtro deporte] Registros despues de filtrar futbol/soccer: {len(df_filtrado)}")
+
+    if df_filtrado.empty:
+        print("[WARNING] [Filtro deporte] El filtro dejo 0 filas. Se desactiva el filtro.")
+        print("[WARNING] [Filtro deporte] Top 10 normalizados:",
+              sport_norm.value_counts().head(10).index.tolist())
+    else:
+        df = df_filtrado
 
     # --- Filtro apuesta simple ---
-    bet_norm = df[col_bet_type].astype(str).str.lower()
-    antes = len(df)
-    df = df[bet_norm.isin(["single", "simple", "sencilla"])]
-    print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
-    print(f"[Filtro apuesta simple] Registros después: {len(df)}")
+    if col_bet_type is not None:
+        bet_norm = df[col_bet_type].astype(str).str.lower()
+        antes = len(df)
+        df = df[bet_norm.isin(["single", "simple", "sencilla"])]
+        print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
+        print(f"[Filtro apuesta simple] Registros después: {len(df)}")
+    else:
+        print("[Filtro apuesta simple] Filtro omitido por falta de columna Bet type/bettype.")
 
     # --- Filtro estado (removemos canceladas/void) ---
     status_norm = df[col_status].astype(str).str.lower()
@@ -259,8 +371,8 @@ def ejecutar_hidding_bonus(
     df_apuestas: pd.DataFrame,
     tolerancia_cobertura: float = 0.10,
     min_total_apostado: float = 0.0,
-    ruta_base: str = "hidding_bonus_base.xlsx",
-    ruta_multi: str = "hidding_bonus_multiusuario.xlsx",
+    ruta_base: str | Path = REPORTS_DIR / "hidding_bonus_base.xlsx",
+    ruta_multi: str | Path = REPORTS_DIR / "hidding_bonus_multiusuario.xlsx",
     max_apuestas_por_seleccion: int = 20,
     progress_callback: ProgressCallback = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -279,6 +391,11 @@ def ejecutar_hidding_bonus(
       - df_base: tabla filtrada base
       - df_trios: tabla resumen (1 fila por trío)
     """
+
+    ruta_base = Path(ruta_base)
+    ruta_multi = Path(ruta_multi)
+    ruta_base.parent.mkdir(parents=True, exist_ok=True)
+    ruta_multi.parent.mkdir(parents=True, exist_ok=True)
 
     # 1) Tabla base con filtros de deporte, bet type, estados, 1x2, etc.
     df_base = preparar_tabla_base_hidding_bonus(df_apuestas)
@@ -443,14 +560,10 @@ def ejecutar_hidding_bonus(
         print(f"Total tríos detectados (tras filtro de cobertura): {len(df_trios)}")
 
         if not df_trios_detalle.empty:
-            df_trios_detalle.to_excel(
-                "hidding_bonus_multiusuario_trios_detalle.xlsx",
-                index=False,
-            )
-            print(
-                "Detalle de tríos guardado en: "
-                "hidding_bonus_multiusuario_trios_detalle.xlsx"
-            )
+            ruta_detalle_trios = REPORTS_DIR / "hidding_bonus_multiusuario_trios_detalle.xlsx"
+            ruta_detalle_trios.parent.mkdir(parents=True, exist_ok=True)
+            df_trios_detalle.to_excel(ruta_detalle_trios, index=False)
+            print(f"Detalle de tríos guardado en: {ruta_detalle_trios}")
     else:
         print("No se encontraron tríos multiusuario que cumplan el filtro de cobertura.")
 
@@ -463,7 +576,7 @@ def ejecutar_hidding_bonus(
 
 def ejecutar_self_hedging(
     df_base: pd.DataFrame,
-    ruta_resultados: str = "hidding_bonus_selfhedging.xlsx",
+    ruta_resultados: str | Path = REPORTS_DIR / "hidding_bonus_selfhedging.xlsx",
     progress_callback: ProgressCallback = None,
 ) -> pd.DataFrame:
     """
@@ -477,6 +590,9 @@ def ejecutar_self_hedging(
     """
 
     print("\nDetectando self-hedging...")
+
+    ruta_resultados = Path(ruta_resultados)
+    ruta_resultados.parent.mkdir(parents=True, exist_ok=True)
 
     # Trabajamos solo con filas que tienen selección_inferida 1/X/2
     if "selection_inferida" not in df_base.columns:
@@ -610,14 +726,13 @@ def ejecutar_self_hedging(
         print(f"Resultados resumen guardados en: {ruta_resultados}")
 
         if not df_detalle.empty:
+            ruta_detalle = REPORTS_DIR / "hidding_bonus_selfhedging_detalle.xlsx"
+            ruta_detalle.parent.mkdir(parents=True, exist_ok=True)
             df_detalle.to_excel(
-                "hidding_bonus_selfhedging_detalle.xlsx",
+                ruta_detalle,
                 index=False,
             )
-            print(
-                "Detalle de self-hedging guardado en: "
-                "hidding_bonus_selfhedging_detalle.xlsx"
-            )
+            print(f"Detalle de self-hedging guardado en: {ruta_detalle}")
     else:
         print("No se detectaron patrones de self-hedging.")
 
@@ -642,7 +757,7 @@ def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
 
 def actualizar_historico_riesgo(
     reporte_riesgo: dict,
-    ruta_historico: str = "historico_riesgo_hiddingbonus.json",
+    ruta_historico: str | Path = REPORTS_DIR / "historico_riesgo_hiddingbonus.json",
 ):
     import os, json
     from datetime import datetime
@@ -687,7 +802,7 @@ def generar_reporte_json(
     min_total_apostado: Optional[float] = None,
     max_apuestas_por_seleccion: Optional[int] = None,
     tiempo_proceso_seg: Optional[float] = None,
-    nombre_archivo: str = "reporte_riesgo_hiddingbonus.json",
+    nombre_archivo: str | Path = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json",
 ) -> None:
     """
     Genera un archivo JSON con el resumen de riesgo para usar, por ejemplo,
@@ -888,6 +1003,9 @@ def generar_reporte_json(
         "parametros_motor": parametros_motor,
     }
 
+    nombre_archivo = Path(nombre_archivo)
+    nombre_archivo.parent.mkdir(parents=True, exist_ok=True)
+
     with open(nombre_archivo, "w", encoding="utf-8-sig") as f:
         json.dump(reporte_riesgo, f, ensure_ascii=False, indent=2)
 
@@ -913,7 +1031,7 @@ def cargar_archivo_generico(ruta: str) -> pd.DataFrame:
     try:
         if ruta.lower().endswith(".csv"):
             try:
-                return pd.read_csv(ruta, sep=";", decimal=",", encoding="utf-8-sig")
+                return pd.read_csv(ruta, sep=",", decimal=".", encoding="utf-8-sig")
             except Exception:
                 return pd.read_csv(ruta, sep=",", decimal=".", encoding="latin1")
         else:
@@ -973,12 +1091,17 @@ def cruzar_con_usuarios_bonus(
     print("🔗 Cruzando con resultados self-hedging...")
     df_self_cruce = pd.merge(df_self, df_bonus, on=columna_cruce, how="inner")
 
-    df_multi_cruce.to_excel("abuso_bonus_multiusuario.xlsx", index=False)
-    df_self_cruce.to_excel("abuso_bonus_selfhedging.xlsx", index=False)
+    ruta_abuso_multi = REPORTS_DIR / "abuso_bonus_multiusuario.xlsx"
+    ruta_abuso_self = REPORTS_DIR / "abuso_bonus_selfhedging.xlsx"
+    ruta_abuso_multi.parent.mkdir(parents=True, exist_ok=True)
+    ruta_abuso_self.parent.mkdir(parents=True, exist_ok=True)
+
+    df_multi_cruce.to_excel(ruta_abuso_multi, index=False)
+    df_self_cruce.to_excel(ruta_abuso_self, index=False)
 
     print("\n✅ Cruce de bonus completado:")
-    print("   → abuso_bonus_multiusuario.xlsx")
-    print("   → abuso_bonus_selfhedging.xlsx")
+    print(f"   → {ruta_abuso_multi}")
+    print(f"   → {ruta_abuso_self}")
 
     return df_multi_cruce, df_self_cruce
 
@@ -1052,8 +1175,10 @@ def generar_abuso_total(
     """
     df = calcular_score_abuso_bonus(df_multi_bonus, df_self_bonus)
     if not df.empty:
-        df.to_excel("abuso_bonus_total.xlsx", index=False)
-        print("\n✅ Generado archivo abuso_bonus_total.xlsx")
+        ruta_abuso_total = REPORTS_DIR / "abuso_bonus_total.xlsx"
+        ruta_abuso_total.parent.mkdir(parents=True, exist_ok=True)
+        df.to_excel(ruta_abuso_total, index=False)
+        print(f"\n✅ Generado archivo {ruta_abuso_total}")
     else:
         print("\n⚠ No se generaron registros de abuso de bonus.")
     return df

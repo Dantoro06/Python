@@ -96,6 +96,14 @@ def normalizar_base(df: pd.DataFrame) -> pd.DataFrame:
         if origen is not None:
             df[canon] = df[origen]
 
+    # Tolerancia de esquema:
+    # - bet_type puede faltar (se permite inferencia por ticket_id)
+    # - bet_status puede faltar (se asume "open")
+    if "bet_type" not in df.columns:
+        df["bet_type"] = None
+    if "bet_status" not in df.columns:
+        df["bet_status"] = "open"
+
     requeridas = [
         "user_id",
         "bet_id",
@@ -105,8 +113,6 @@ def normalizar_base(df: pd.DataFrame) -> pd.DataFrame:
         "market",
         "selection",
         "stake",
-        "bet_status",
-        "bet_type",
     ]
     faltantes = [c for c in requeridas if c not in df.columns]
     if faltantes:

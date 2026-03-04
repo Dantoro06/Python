@@ -226,7 +226,8 @@ def _agregar_fechas_apuesta(df_casos: pd.DataFrame, df_raw: pd.DataFrame) -> pd.
 
     mask_self = df_out["tipo_motor"] == "selfhedging"
     if mask_self.any():
-        df_self = df_out[mask_self].merge(
+        left = df_out.loc[mask_self, ["case_id", "_user_key", "event_name"]].copy()
+        df_self = left.merge(
             fechas_agg,
             left_on=["_user_key", "event_name"],
             right_on=["user_id", "event_name"],
