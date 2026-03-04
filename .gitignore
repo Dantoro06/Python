@@ -1,17 +1,16 @@
-# Local / IDE
+# Python cache
+__pycache__/
+*.pyc
+
+# Local IDE
 .vscode/
 
-# Artefactos temporales
-*.patch
-*.tmp
-*.log
-Nuevo Documento de texto.txt
-
-# Outputs / reportes (si no quieres versionarlos)
+# Outputs / artefactos
 reports/
-*.xlsx
-*.csv
+*.patch
 
-# Entornos virtuales
-venv*/
-.venv/
+# Artefactos específicos del proyecto
+src/motor/motor_aml_pipeline_v0_integrado_bonus.txt
+
+# Local docs (si no son documentación formal del repo)
+Docs/
