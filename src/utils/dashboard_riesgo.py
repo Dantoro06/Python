@@ -15,14 +15,13 @@ import streamlit as st
 import altair as alt
 
 # === RUTAS CORREGIDAS PARA JSON ===
-from pathlib import Path
+try:
+    from utils.paths_dashboard import DASHBOARD_DATA_DIR
+except Exception:
+    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR
 
-# Directorio reports/ en la raíz del proyecto
-REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports"
-REPORTS_DIR.mkdir(exist_ok=True)
-
-HISTORICO_PATH = REPORTS_DIR / "historico_riesgo_hiddingbonus.json"
-REPORTE_ACTUAL_PATH = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json"
+HISTORICO_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_hiddingbonus.json"
+REPORTE_ACTUAL_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = REPO_ROOT / "src"

@@ -23,16 +23,24 @@ if PROJECT_ROOT not in sys.path:
 
 from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
 
-REPORTS_DIR = (
-    Path(PROJECT_ROOT) / "reports"
-    if (Path(PROJECT_ROOT) / "reports").exists()
-    else Path(BASE_DIR) / "reports"
-)
-REPORTE_PATH = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json"
-HISTORICO_PATH = REPORTS_DIR / "historico_riesgo_hiddingbonus.json"
+DASHBOARD_DATA_DIR = Path(PROJECT_ROOT) / "Data Dashboard"
+DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR = Path(PROJECT_ROOT) / "reports"
+
+
+def _resolver_json(nombre: str) -> Path:
+    primary = DASHBOARD_DATA_DIR / nombre
+    if primary.exists():
+        return primary
+    return REPORTS_DIR / nombre
+
+
+REPORTE_PATH = _resolver_json("reporte_riesgo_hiddingbonus.json")
+HISTORICO_PATH = _resolver_json("historico_riesgo_hiddingbonus.json")
 
 
 def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
+    path = _resolver_json("reporte_riesgo_hiddingbonus.json")
     if not path.exists():
         return None
     try:
@@ -49,6 +57,7 @@ def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
 
 
 def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
+    path = _resolver_json("historico_riesgo_hiddingbonus.json")
     if not path.exists():
         return pd.DataFrame()
     try:
@@ -80,7 +89,7 @@ def render_segmentation_view():
     if historico_df.empty:
         st.warning(
             "No hay histórico disponible para segmentar. Ejecuta el motor para generar "
-            "reports/historico_riesgo_hiddingbonus.json."
+            "Data Dashboard/historico_riesgo_hiddingbonus.json."
         )
     else:
         st.subheader("Evolución de casos por tipo")

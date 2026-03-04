@@ -13,15 +13,17 @@ from datetime import datetime
 import socket
 import os
 
-
-# ============================================================
-# Rutas de proyecto
-# ============================================================
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-REPORTS_DIR = PROJECT_ROOT / "reports"
-REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-
+try:
+    from utils.paths_dashboard import PROJECT_ROOT, REPORTS_DIR, DASHBOARD_DATA_DIR
+except Exception:
+    try:
+        from src.utils.paths_dashboard import PROJECT_ROOT, REPORTS_DIR, DASHBOARD_DATA_DIR
+    except Exception:
+        PROJECT_ROOT = Path(__file__).resolve().parents[2]
+        REPORTS_DIR = PROJECT_ROOT / "reports"
+        DASHBOARD_DATA_DIR = PROJECT_ROOT / "Data Dashboard"
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================
 # Utilidades internas
@@ -757,10 +759,12 @@ def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
 
 def actualizar_historico_riesgo(
     reporte_riesgo: dict,
-    ruta_historico: str | Path = REPORTS_DIR / "historico_riesgo_hiddingbonus.json",
+    ruta_historico: str | Path = DASHBOARD_DATA_DIR / "historico_riesgo_hiddingbonus.json",
 ):
     import os, json
     from datetime import datetime
+    ruta_historico = Path(ruta_historico)
+    ruta_historico.parent.mkdir(parents=True, exist_ok=True)
     meta = reporte_riesgo.get("metadata", {})
     resumen = reporte_riesgo.get("resumen_ejecucion", {})
     est = reporte_riesgo.get("estadisticas_riesgo", {})
@@ -802,7 +806,7 @@ def generar_reporte_json(
     min_total_apostado: Optional[float] = None,
     max_apuestas_por_seleccion: Optional[int] = None,
     tiempo_proceso_seg: Optional[float] = None,
-    nombre_archivo: str | Path = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json",
+    nombre_archivo: str | Path = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json",
 ) -> None:
     """
     Genera un archivo JSON con el resumen de riesgo para usar, por ejemplo,

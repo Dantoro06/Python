@@ -9,6 +9,18 @@ from itertools import combinations  # CAMBIO
 import socket
 import os
 
+try:
+    from utils.paths_dashboard import PROJECT_ROOT, REPORTS_DIR, DASHBOARD_DATA_DIR
+except Exception:
+    try:
+        from src.utils.paths_dashboard import PROJECT_ROOT, REPORTS_DIR, DASHBOARD_DATA_DIR
+    except Exception:
+        PROJECT_ROOT = Path(__file__).resolve().parents[2]
+        REPORTS_DIR = PROJECT_ROOT / "reports"
+        DASHBOARD_DATA_DIR = PROJECT_ROOT / "Data Dashboard"
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 # CAMBIO (enero 2026):
 # - Se añade tolerancia híbrida por monto (tol_abs / k / tol_max) para multiusuario y self-hedging.
 # - Se mantienen ratios como modo alternativo y se enriquece la salida con columnas de trazabilidad.
@@ -18,15 +30,6 @@ ProgressCallback = Optional[Callable[[str, int, int], None]]
 
 __version__ = "TRIADAS_V3_2025-12-30"
 
-
-
-# ============================================================
-# Rutas de proyecto
-# ============================================================
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-REPORTS_DIR = PROJECT_ROOT / "reports"
-REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -1310,8 +1313,10 @@ def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
 
 def actualizar_historico_riesgo(
     reporte_riesgo: dict,
-    ruta_historico: str | Path = REPORTS_DIR / "historico_riesgo_multicuenta.json",
+    ruta_historico: str | Path = DASHBOARD_DATA_DIR / "historico_riesgo_multicuenta.json",
 ):
+    ruta_historico = Path(ruta_historico)
+    ruta_historico.parent.mkdir(parents=True, exist_ok=True)
     meta = reporte_riesgo.get("metadata", {})
     resumen = reporte_riesgo.get("resumen_ejecucion", {})
     est = reporte_riesgo.get("estadisticas_riesgo", {})
@@ -1359,7 +1364,7 @@ def generar_reporte_json(
     tol_max: Optional[float] = None,
     modo_tolerancia: Optional[str] = None,
     tiempo_proceso_seg: Optional[float] = None,
-    nombre_archivo: str | Path = REPORTS_DIR / "reporte_riesgo_multicuenta.json",
+    nombre_archivo: str | Path = DASHBOARD_DATA_DIR / "reporte_riesgo_multicuenta.json",
 ) -> None:
     """
     Genera un archivo JSON con el resumen de riesgo (multiusuario + self-hedging).
@@ -1528,7 +1533,7 @@ def ejecutar_motor_multicuenta(
 
     ruta_multi = Path(ruta_multi) if ruta_multi is not None else REPORTS_DIR / "multi_cuenta_resultado.xlsx"
     ruta_self = Path(ruta_self) if ruta_self is not None else REPORTS_DIR / "selfhedging_resultado.xlsx"
-    ruta_json = Path(ruta_json) if ruta_json is not None else REPORTS_DIR / "reporte_riesgo_multicuenta.json"
+    ruta_json = Path(ruta_json) if ruta_json is not None else DASHBOARD_DATA_DIR / "reporte_riesgo_multicuenta.json"
 
     df_multi = detectar_trios_multiusuario(
         df_base,

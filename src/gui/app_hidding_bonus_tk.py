@@ -41,6 +41,10 @@ try:
     from motor.aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
 except Exception:
     from src.motor.aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
+try:
+    from utils.paths_dashboard import DASHBOARD_DATA_DIR
+except Exception:
+    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR
 from motor.motor_aml_pipeline import ejecutar_aml_pipeline
 try:
     from motor.motor_aml_pipeline_v0 import ejecutar_pipeline_aml_v0
@@ -591,7 +595,7 @@ def construir_gui():
                 resultados = [
                     "- reports/multi_cuenta_resultado.xlsx",
                     "- reports/selfhedging_resultado.xlsx",
-                    "- reports/reporte_riesgo_multicuenta.json",
+                    f"- {DASHBOARD_DATA_DIR / 'reporte_riesgo_multicuenta.json'}",
                 ]
 
                 if run_extra:
@@ -741,7 +745,7 @@ def construir_gui():
                     "Resultados:\n"
                     "- reports/multi_cuenta_resultado.xlsx\n"
                     "- reports/selfhedging_resultado.xlsx\n"
-                    "- reports/reporte_riesgo_multicuenta.json",
+                    f"- {DASHBOARD_DATA_DIR / 'reporte_riesgo_multicuenta.json'}",
                 )
                 actualizar_estado_ultimo()
             except Exception:

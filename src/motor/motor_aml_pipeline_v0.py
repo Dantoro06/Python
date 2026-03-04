@@ -32,6 +32,17 @@ except Exception:
     )
 
 try:
+    from utils.paths_dashboard import REPORTS_DIR, DASHBOARD_DATA_DIR
+except Exception:
+    try:
+        from src.utils.paths_dashboard import REPORTS_DIR, DASHBOARD_DATA_DIR
+    except Exception:
+        REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports"
+        DASHBOARD_DATA_DIR = Path(__file__).resolve().parents[2] / "Data Dashboard"
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+try:
     # En este proyecto, bonus abuse suele estar a nivel src/
     from motor_bonus_abuse import ejecutar as ejecutar_bonus_abuse_fn
 except Exception:
@@ -60,6 +71,7 @@ DEFAULT_CONFIG_BONUS_ABUSE: Dict = {
     "umbral_horas_bono_retiro": 24,
     "umbral_cantidad_bonos": 3,
 }
+MAX_FILAS_JSON_DETALLE = 20000
 
 
 # -----------------------------
@@ -338,7 +350,7 @@ def ejecutar_pipeline_aml_v0(
     df_global = _consolidar_riesgo_global(df_detalle)
 
     # Export
-    reports_dir = Path(out_dir) if out_dir else (Path(__file__).resolve().parents[2] / "reports")
+    reports_dir = Path(out_dir) if out_dir else REPORTS_DIR
     reports_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -348,8 +360,20 @@ def ejecutar_pipeline_aml_v0(
     df_detalle.to_excel(detalle_path, index=False)
     df_global.to_excel(global_path, index=False)
 
+    # JSON livianos para dashboard
+    dashboard_global_json = DASHBOARD_DATA_DIR / "pipeline_global.json"
+    df_global.to_json(dashboard_global_json, orient="records", force_ascii=False)
+
+    dashboard_detalle_json = None
+    if len(df_detalle) <= MAX_FILAS_JSON_DETALLE:
+        dashboard_detalle_json = DASHBOARD_DATA_DIR / "pipeline_detalle.json"
+        df_detalle.to_json(dashboard_detalle_json, orient="records", force_ascii=False)
+
     print(f"[PIPELINE V0] detalle: {detalle_path}")
     print(f"[PIPELINE V0] global:  {global_path}")
+    print(f"[PIPELINE V0] global_json: {dashboard_global_json}")
+    if dashboard_detalle_json is not None:
+        print(f"[PIPELINE V0] detalle_json: {dashboard_detalle_json}")
 
     if return_summary:
         return {
@@ -358,6 +382,12 @@ def ejecutar_pipeline_aml_v0(
             "salidas": {
                 "detalle": str(detalle_path),
                 "global": str(global_path),
+                "pipeline_global_json": str(dashboard_global_json),
+                **(
+                    {"pipeline_detalle_json": str(dashboard_detalle_json)}
+                    if dashboard_detalle_json is not None
+                    else {}
+                ),
             },
         }
 

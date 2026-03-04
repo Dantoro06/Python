@@ -30,9 +30,20 @@ if PROJECT_ROOT not in sys.path:
 
 from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
 
+DASHBOARD_DATA_DIR = Path(__file__).resolve().parents[1] / "Data Dashboard"
+DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR = Path(__file__).resolve().parents[1] / "reports"
-REPORTE_PATH = REPORTS_DIR / "reporte_riesgo_hiddingbonus.json"
-HISTORICO_PATH = REPORTS_DIR / "historico_riesgo_hiddingbonus.json"
+
+
+def _resolver_json(nombre: str) -> Path:
+    primary = DASHBOARD_DATA_DIR / nombre
+    if primary.exists():
+        return primary
+    return REPORTS_DIR / nombre
+
+
+REPORTE_PATH = _resolver_json("reporte_riesgo_hiddingbonus.json")
+HISTORICO_PATH = _resolver_json("historico_riesgo_hiddingbonus.json")
 
 
 def _validar_reporte(data: Any) -> Optional[Dict[str, Any]]:
@@ -48,10 +59,11 @@ def _validar_reporte(data: Any) -> Optional[Dict[str, Any]]:
 
 def cargar_reporte_reciente(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
     """Carga el reporte actual generado por el motor."""
+    path = _resolver_json("reporte_riesgo_hiddingbonus.json")
     if not path.exists():
         st.warning(
             "No se encontró el archivo de reporte reciente. Ejecuta el motor para generar "
-            "reporte_riesgo_hiddingbonus.json en la carpeta reports/."
+            "reporte_riesgo_hiddingbonus.json en la carpeta Data Dashboard/."
         )
         return None
 
@@ -67,7 +79,8 @@ def cargar_reporte_reciente(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any
 
 
 def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
-    """Carga el histórico de ejecuciones desde reports/."""
+    """Carga el histórico de ejecuciones desde Data Dashboard/."""
+    path = _resolver_json("historico_riesgo_hiddingbonus.json")
     if not path.exists():
         return pd.DataFrame()
 
@@ -281,7 +294,7 @@ st.subheader("Histórico")
 if historico_df.empty:
     st.warning(
         "No hay histórico disponible. Ejecuta el motor al menos una vez para generar "
-        "reports/historico_riesgo_hiddingbonus.json."
+        "Data Dashboard/historico_riesgo_hiddingbonus.json."
     )
 else:
     graf_ratio = (
@@ -298,3 +311,4 @@ else:
 
 st.markdown("---")
 _panel_usuario(reporte.get("top_usuarios_riesgo", []))
+

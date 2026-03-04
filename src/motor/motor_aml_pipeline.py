@@ -18,6 +18,7 @@ import pandas as pd
 # CAMBIO: imports con fallback para distintos contextos de ejecucion
 try:
     from motor.aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
+    from utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
     from motor.motor_multi_cuenta import (
         _get_col,
         detectar_self_hedging,
@@ -27,6 +28,7 @@ try:
     )
 except Exception:
     from aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
+    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
     from motor_multi_cuenta import (
         _get_col,
         detectar_self_hedging,
@@ -719,7 +721,7 @@ def ejecutar_aml_pipeline(
     radar_path = out_dir_path / "aml_radar_ratio.xlsx"
     cola_path = out_dir_path / "aml_cola_operativa_hybrid.xlsx"
     watchlist_path = out_dir_path / "aml_watchlist.xlsx"
-    json_path = out_dir_path / "aml_pipeline.json"
+    json_path = DASHBOARD_DATA_DIR / "aml_pipeline.json"
 
     df_casos.to_excel(radar_path, index=False)
     df_casos[df_casos["confirmado_hybrid"]].to_excel(cola_path, index=False)
