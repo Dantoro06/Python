@@ -30,20 +30,26 @@ if PROJECT_ROOT not in sys.path:
 
 from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
 
-DASHBOARD_DATA_DIR = Path(__file__).resolve().parents[1] / "Data Dashboard"
-DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
-REPORTS_DIR = Path(__file__).resolve().parents[1] / "reports"
+try:
+    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
+except Exception:
+    from utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
 
 
-def _resolver_json(nombre: str) -> Path:
-    primary = DASHBOARD_DATA_DIR / nombre
-    if primary.exists():
-        return primary
-    return REPORTS_DIR / nombre
+def cargar_json(nombre: str) -> Path:
+    p1 = DASHBOARD_DATA_DIR / nombre
+    p2 = REPORTS_DIR / nombre
+    if p1.exists():
+        return p1
+    if p2.exists():
+        return p2
+    raise FileNotFoundError(
+        f"No se encontro '{nombre}' en '{DASHBOARD_DATA_DIR}' ni en '{REPORTS_DIR}'."
+    )
 
 
-REPORTE_PATH = _resolver_json("reporte_riesgo_hiddingbonus.json")
-HISTORICO_PATH = _resolver_json("historico_riesgo_hiddingbonus.json")
+REPORTE_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
+HISTORICO_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_hiddingbonus.json"
 
 
 def _validar_reporte(data: Any) -> Optional[Dict[str, Any]]:
@@ -59,7 +65,14 @@ def _validar_reporte(data: Any) -> Optional[Dict[str, Any]]:
 
 def cargar_reporte_reciente(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
     """Carga el reporte actual generado por el motor."""
-    path = _resolver_json("reporte_riesgo_hiddingbonus.json")
+    try:
+        path = cargar_json("reporte_riesgo_hiddingbonus.json")
+    except FileNotFoundError:
+        st.warning(
+            "No se encontrÃ³ el archivo de reporte reciente. Ejecuta el motor para generar "
+            "reporte_riesgo_hiddingbonus.json en la carpeta Data Dashboard/."
+        )
+        return None
     if not path.exists():
         st.warning(
             "No se encontró el archivo de reporte reciente. Ejecuta el motor para generar "
@@ -80,7 +93,10 @@ def cargar_reporte_reciente(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any
 
 def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
     """Carga el histórico de ejecuciones desde Data Dashboard/."""
-    path = _resolver_json("historico_riesgo_hiddingbonus.json")
+    try:
+        path = cargar_json("historico_riesgo_hiddingbonus.json")
+    except FileNotFoundError:
+        return pd.DataFrame()
     if not path.exists():
         return pd.DataFrame()
 

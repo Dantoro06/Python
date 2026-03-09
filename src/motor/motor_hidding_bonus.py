@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional, Callable
 import re
@@ -174,7 +175,10 @@ def _infer_selection_1x2(row: pd.Series, col_market: str, col_event: str) -> Opt
 # Preparación de la tabla base (filtros + columnas estándar)
 # ============================================================
 
-def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame:
+def preparar_tabla_base_hidding_bonus(
+    df_apuestas: pd.DataFrame,
+    strict_schema: bool = False,
+) -> pd.DataFrame:
     """
     Aplica los filtros necesarios y construye la tabla base para análisis
     de HiddingBonus / self-hedging, con columnas estandarizadas:
@@ -211,18 +215,18 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
         ["Sport", "Deporte", "sports", "tipo deporte"],
         nombre_logico="sport",
     )
-    try:
-        col_bet_type = _get_col(
-            df,
-            ["Bet type", "bettype", "bet_type", "BetType", "betType", "tipo apuesta"],
-            nombre_logico="bet_type",
-        )
-    except KeyError:
-        col_bet_type = None
-        print(
-            "[Filtro apuesta simple] No se encontraron columnas de tipo de apuesta "
-            "(['Bet type', 'bettype']). Se omitirá este filtro."
-        )
+    col_bet_type = _get_col(
+        df,
+        ["Bet type", "bettype", "bet_type", "BetType", "betType", "tipo apuesta"],
+        obligatorio=False,
+        nombre_logico="bet_type",
+    )
+    col_ticket_id = _get_col(
+        df,
+        ["ticket_id", "ticketid", "ticket", "id_ticket", "idticket"],
+        obligatorio=False,
+        nombre_logico="ticket_id",
+    )
     col_status = _get_col(
         df,
         ["Status", "Estado", "bet status"],
@@ -242,6 +246,52 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
         df,
         ["Stake", "Valor apostado", "Bet amount", "importe"],
         nombre_logico="stake",
+    )
+    col_bet_id = _get_col(
+        df,
+        ["bet_id", "BetId", "betid", "id_apuesta", "IdApuesta"],
+        obligatorio=False,
+        nombre_logico="bet_id",
+    )
+
+    if col_bet_type is None:
+        df["_bet_type_inferido"] = True
+        if col_ticket_id is not None and col_bet_id is not None:
+            n_bets_ticket = df.groupby(col_ticket_id)[col_bet_id].transform("nunique")
+            df["bet_type"] = np.where(n_bets_ticket > 1, "multiple", "single")
+            print("[Schema] bet_type inferido con ticket_id")
+        elif col_ticket_id is not None:
+            n_bets_ticket = df.groupby(col_ticket_id)[col_ticket_id].transform("count")
+            df["bet_type"] = np.where(n_bets_ticket > 1, "multiple", "single")
+            print("[Schema] bet_type inferido con ticket_id")
+        else:
+            if strict_schema:
+                raise ValueError("Falta bet_type y no hay ticket_id para inferir")
+            df["bet_type"] = "single"
+        col_bet_type = "bet_type"
+    else:
+        df["_bet_type_inferido"] = False
+
+    df[col_bet_type] = (
+        df[col_bet_type]
+        .astype(str)
+        .str.lower()
+        .str.strip()
+        .replace(
+            {
+                "simple": "single",
+                "single": "single",
+                "singles": "single",
+                "sencilla": "single",
+                "parlay": "multiple",
+                "combo": "multiple",
+                "combinada": "multiple",
+                "multiple": "multiple",
+                "nan": "single",
+                "none": "single",
+                "": "single",
+            }
+        )
     )
 
     # Bonus stake opcional
@@ -289,14 +339,12 @@ def preparar_tabla_base_hidding_bonus(df_apuestas: pd.DataFrame) -> pd.DataFrame
         df = df_filtrado
 
     # --- Filtro apuesta simple ---
-    if col_bet_type is not None:
-        bet_norm = df[col_bet_type].astype(str).str.lower()
-        antes = len(df)
-        df = df[bet_norm.isin(["single", "simple", "sencilla"])]
-        print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
-        print(f"[Filtro apuesta simple] Registros después: {len(df)}")
-    else:
-        print("[Filtro apuesta simple] Filtro omitido por falta de columna Bet type/bettype.")
+    antes = len(df)
+    count_multiple_excluidas = int((df[col_bet_type] == "multiple").sum())
+    df = df[df[col_bet_type] == "single"]
+    print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
+    print(f"[Filtro apuesta simple] Registros después: {len(df)}")
+    print(f"[Filtro apuesta simple] count_multiple_excluidas: {count_multiple_excluidas}")
 
     # --- Filtro estado (removemos canceladas/void) ---
     status_norm = df[col_status].astype(str).str.lower()

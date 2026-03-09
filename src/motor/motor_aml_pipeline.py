@@ -18,7 +18,6 @@ import pandas as pd
 # CAMBIO: imports con fallback para distintos contextos de ejecucion
 try:
     from motor.aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
-    from utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
     from motor.motor_multi_cuenta import (
         _get_col,
         detectar_self_hedging,
@@ -28,7 +27,6 @@ try:
     )
 except Exception:
     from aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
-    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
     from motor_multi_cuenta import (
         _get_col,
         detectar_self_hedging,
@@ -36,6 +34,11 @@ except Exception:
         normalizar_base,
         preparar_tabla_base_multicuenta,
     )
+
+try:
+    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
+except Exception:
+    from utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
 
 
 @dataclass
@@ -623,12 +626,12 @@ def ejecutar_aml_pipeline(
     path_depositos: Optional[str] = None,
     path_retiros: Optional[str] = None,
     path_kyc: Optional[str] = None,
-    out_dir: str = "reports",
+    out_dir: Optional[str | Path] = None,
 ) -> dict:
     # CAMBIO: orquestador AML 2 capas sin modificar motores existentes
     print("\n================= INICIANDO AML PIPELINE (2 CAPAS) =================\n")
 
-    out_dir_path = Path(out_dir)
+    out_dir_path = Path(out_dir) if out_dir else REPORTS_DIR
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
     df_raw = cargar_base_apuestas(path_base_apuestas)

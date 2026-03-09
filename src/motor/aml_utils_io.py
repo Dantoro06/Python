@@ -31,14 +31,26 @@ def _leer_tabular(
 ) -> Optional[pd.DataFrame]:
     ruta = str(ruta)
     if ruta.lower().endswith(".csv"):
-        df = pd.read_csv(
-            ruta,
-            sep=";",
-            decimal=",",
-            encoding="utf-8",
-            low_memory=False,
-        )
+        try:
+            df = pd.read_csv(
+                ruta,
+                sep=";",
+                decimal=",",
+                encoding="utf-8",
+                low_memory=False,
+            )
+        except Exception:
+            if fallback_csv:
+                return pd.read_csv(
+                    ruta,
+                    sep=",",
+                    decimal=".",
+                    encoding="utf-8-sig",
+                    low_memory=False,
+                )
+            raise
         if df.shape[1] == 1:
+            print(f"[AML IO] CSV con una sola columna tras leer con ';': {ruta}")
             if on_csv_unacolumna is not None:
                 on_csv_unacolumna(ruta, list(df.columns))
             if fallback_csv:

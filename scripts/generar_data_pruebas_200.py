@@ -119,7 +119,7 @@ def generar_base_bonos() -> pd.DataFrame:
         {
             "user_id": 9003,
             "estado_bono": "PENDIENTE",
-            "monto_bono": 180.0,
+            "monto_bono": 180.0, 
             "deposito": 100.0,
             "fecha_bono": "2026-01-04 10:00:00",
             "fecha_retiro": None,

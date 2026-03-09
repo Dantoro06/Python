@@ -2,21 +2,32 @@
 __pycache__/
 *.pyc
 
-# Local IDE
+# IDE local
 .vscode/
 
-# Reportes pesados / temporales
-reports/
-
-# Patches locales (se siguen generando, pero Git no los trackea)
+# Patches locales (se generan, pero Git no los trackea)
 Patch/
 cambios*.patch
 cambios_resumen.txt
 cambios_total.patch
 cambios_branch_vs_main.patch
 
+# Outputs generados
+Data Dashboard/
+outputs/
+datasets/
+Data pruebas/
+
+# Artefactos locales
+Nuevo Documento de texto.txt
+aplicar_normalizacion_eol.ps1
+src/utils/reporte_riesgo_hiddingbonus2.json
+
+# Docs locales
+Docs/
+
+# Reportes pesados / temporales
+reports/
+
 # Artefactos específicos del proyecto
 src/motor/motor_aml_pipeline_v0_integrado_bonus.txt
-
-# Local docs (si no son documentación formal del repo)
-Docs/

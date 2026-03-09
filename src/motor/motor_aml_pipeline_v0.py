@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Optional, Dict, Union
 
@@ -32,10 +33,10 @@ except Exception:
     )
 
 try:
-    from utils.paths_dashboard import REPORTS_DIR, DASHBOARD_DATA_DIR
+    from src.utils.paths_dashboard import REPORTS_DIR, DASHBOARD_DATA_DIR
 except Exception:
     try:
-        from src.utils.paths_dashboard import REPORTS_DIR, DASHBOARD_DATA_DIR
+        from utils.paths_dashboard import REPORTS_DIR, DASHBOARD_DATA_DIR
     except Exception:
         REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports"
         DASHBOARD_DATA_DIR = Path(__file__).resolve().parents[2] / "Data Dashboard"
@@ -44,13 +45,13 @@ except Exception:
 
 try:
     # En este proyecto, bonus abuse suele estar a nivel src/
-    from motor_bonus_abuse import ejecutar as ejecutar_bonus_abuse_fn
+    from motor_bonus_abuse import ejecutar as bonus_abuse_fn
 except Exception:
     try:
-        from motor.motor_bonus_abuse import ejecutar as ejecutar_bonus_abuse_fn
+        from motor.motor_bonus_abuse import ejecutar as bonus_abuse_fn
     except Exception:
         # último fallback (si se ejecuta como paquete)
-        from .motor_bonus_abuse import ejecutar as ejecutar_bonus_abuse_fn
+        from .motor_bonus_abuse import ejecutar as bonus_abuse_fn
 
 # -----------------------------
 # Contrato estándar
@@ -71,7 +72,7 @@ DEFAULT_CONFIG_BONUS_ABUSE: Dict = {
     "umbral_horas_bono_retiro": 24,
     "umbral_cantidad_bonos": 3,
 }
-MAX_FILAS_JSON_DETALLE = 20000
+MAX_FILAS_JSON_DETALLE = 100000
 
 
 # -----------------------------
@@ -297,7 +298,7 @@ def ejecutar_pipeline_aml_v0(
 
         df_bonos = cargar_tabla_opcional(path_bonos) if path_bonos else pd.DataFrame()
 
-        df_bonus_detalle, _metricas = ejecutar_bonus_abuse_fn(
+        df_bonus_detalle, _metricas = bonus_abuse_fn(
             df_raw,  # usa df_raw para poder aprovechar columnas de bonos si están incluidas
             pd.DataFrame(),
             df_bonos if df_bonos is not None else pd.DataFrame(),
@@ -360,20 +361,32 @@ def ejecutar_pipeline_aml_v0(
     df_detalle.to_excel(detalle_path, index=False)
     df_global.to_excel(global_path, index=False)
 
-    # JSON livianos para dashboard
+    # JSON para dashboard
     dashboard_global_json = DASHBOARD_DATA_DIR / "pipeline_global.json"
     df_global.to_json(dashboard_global_json, orient="records", force_ascii=False)
 
     dashboard_detalle_json = None
+    dashboard_detalle_meta_json = None
     if len(df_detalle) <= MAX_FILAS_JSON_DETALLE:
         dashboard_detalle_json = DASHBOARD_DATA_DIR / "pipeline_detalle.json"
         df_detalle.to_json(dashboard_detalle_json, orient="records", force_ascii=False)
+    else:
+        dashboard_detalle_meta_json = DASHBOARD_DATA_DIR / "pipeline_detalle_meta.json"
+        meta = {
+            "skipped": True,
+            "rows": int(len(df_detalle)),
+            "reason": f"Detalle omitido por tamano: supera {MAX_FILAS_JSON_DETALLE} filas.",
+        }
+        with dashboard_detalle_meta_json.open("w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
 
     print(f"[PIPELINE V0] detalle: {detalle_path}")
     print(f"[PIPELINE V0] global:  {global_path}")
     print(f"[PIPELINE V0] global_json: {dashboard_global_json}")
     if dashboard_detalle_json is not None:
         print(f"[PIPELINE V0] detalle_json: {dashboard_detalle_json}")
+    if dashboard_detalle_meta_json is not None:
+        print(f"[PIPELINE V0] detalle_meta_json: {dashboard_detalle_meta_json}")
 
     if return_summary:
         return {
@@ -386,6 +399,11 @@ def ejecutar_pipeline_aml_v0(
                 **(
                     {"pipeline_detalle_json": str(dashboard_detalle_json)}
                     if dashboard_detalle_json is not None
+                    else {}
+                ),
+                **(
+                    {"pipeline_detalle_meta_json": str(dashboard_detalle_meta_json)}
+                    if dashboard_detalle_meta_json is not None
                     else {}
                 ),
             },

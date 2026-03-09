@@ -1,4 +1,5 @@
 ﻿import pandas as pd
+import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional, Callable
 import re
@@ -47,7 +48,7 @@ def _normalizar_nombre_columna(nombre: str) -> str:
     return s
 
 
-def normalizar_base(df: pd.DataFrame) -> pd.DataFrame:
+def normalizar_base(df: pd.DataFrame, strict_schema: bool = False) -> pd.DataFrame:
     """
     Normaliza columnas a un esquema canonico para el motor 1X2. # CAMBIO
     """
@@ -99,11 +100,42 @@ def normalizar_base(df: pd.DataFrame) -> pd.DataFrame:
         if origen is not None:
             df[canon] = df[origen]
 
-    # Tolerancia de esquema:
-    # - bet_type puede faltar (se permite inferencia por ticket_id)
-    # - bet_status puede faltar (se asume "open")
+    # bet_type: canonico esencial para el motor (modo tolerante/estricto)
     if "bet_type" not in df.columns:
-        df["bet_type"] = None
+        df["_bet_type_inferido"] = True
+        if "ticket_id" in df.columns:
+            n_bets_ticket = df.groupby("ticket_id")["bet_id"].transform("nunique")
+            df["bet_type"] = np.where(n_bets_ticket > 1, "multiple", "single")
+            print("[Schema] bet_type inferido con ticket_id")
+        else:
+            if strict_schema:
+                raise ValueError("Falta bet_type y no hay ticket_id para inferir")
+            df["bet_type"] = "single"
+    else:
+        df["_bet_type_inferido"] = False
+        df["bet_type"] = df["bet_type"].astype(str).str.lower().str.strip()
+        mapa_bet_type = {
+            "simple": "single",
+            "single": "single",
+            "singles": "single",
+            "sencilla": "single",
+            "parlay": "multiple",
+            "combo": "multiple",
+            "combinada": "multiple",
+            "multiple": "multiple",
+        }
+        df["bet_type"] = df["bet_type"].replace(mapa_bet_type)
+
+    df["bet_type"] = (
+        df["bet_type"]
+        .fillna("single")
+        .astype(str)
+        .str.lower()
+        .str.strip()
+        .replace({"": "single", "nan": "single", "none": "single"})
+    )
+
+    # bet_status puede faltar (se asume "open")
     if "bet_status" not in df.columns:
         df["bet_status"] = "open"
 
@@ -322,7 +354,11 @@ def _imprimir_debug_filtro(
 # PreparaciÃ³n de la tabla base (filtros + columnas estÃ¡ndar)
 # ============================================================
 
-def preparar_tabla_base_multicuenta(df_apuestas: pd.DataFrame, bucket: str = "min") -> pd.DataFrame:
+def preparar_tabla_base_multicuenta(
+    df_apuestas: pd.DataFrame,
+    bucket: str = "min",
+    strict_schema: bool = False,
+) -> pd.DataFrame:
     """
     Aplica los filtros necesarios y construye la tabla base para el motor
     multi-cuenta / self-hedging, con columnas estandarizadas:
@@ -337,7 +373,7 @@ def preparar_tabla_base_multicuenta(df_apuestas: pd.DataFrame, bucket: str = "mi
     """
 
     # CAMBIO: normalizar columnas antes de cualquier filtro
-    df = normalizar_base(df_apuestas)
+    df = normalizar_base(df_apuestas, strict_schema=strict_schema)
 
     # CAMBIO: parseo de tipos
     df["user_id"] = pd.to_numeric(df["user_id"], errors="coerce").astype("Int64")
@@ -403,65 +439,21 @@ def preparar_tabla_base_multicuenta(df_apuestas: pd.DataFrame, bucket: str = "mi
     else:
         df = df_filtrado
 
-    # CAMBIO: Filtro apuesta simple robusto con inferencia por prioridad
-    usar_inferencia_ticket = False
-    bet_norm = df[col_bet_type].map(normalize_text)
-    valid_mask = bet_norm.notna() & (~bet_norm.isin(["", "nan", "none"]))
     _imprimir_debug_filtro("Filtro apuesta simple (antes)", df, col_bet_type, normalize_text)
-    if valid_mask.any():
-        patron_simple = r"simple|single"
-        mask_bet = bet_norm.str.contains(patron_simple, na=False)
-        df_filtrado = df[mask_bet].copy()
-        print(f"[Filtro apuesta simple] Registros despues del filtro: {len(df_filtrado)}")
-        _imprimir_debug_filtro("Filtro apuesta simple (despues)", df_filtrado, col_bet_type, normalize_text)
-        if df_filtrado.empty:
-            print("[WARNING] [Filtro apuesta simple] El filtro dejo 0 filas.")
-            print(
-                df[[col_user, col_sport, col_bet_type, col_status, col_market, col_selection, col_stake, col_event, "fecha_apuesta"]]
-                .head(20)
-                .to_string(index=False)
-            )
-        else:
-            df = df_filtrado
-    else:
-        print("[Filtro apuesta simple] Columna tipo apuesta sin valores. Se omite filtro.")
-        usar_inferencia_ticket = True
-
-    if usar_inferencia_ticket:
-        # CAMBIO: inferencia por ticket_id cuando no hay columna explicita util
-        col_ticket_id = _get_col(
-            df,
-            ["ticket_id", "ticketid", "ticket", "id_ticket", "idticket"],
-            obligatorio=False,
-            nombre_logico="ticket_id",
+    count_multiple_excluidas = int((df[col_bet_type] == "multiple").sum())
+    df_filtrado = df[df[col_bet_type] == "single"].copy()
+    print(f"[Filtro apuesta simple] Registros despues del filtro: {len(df_filtrado)}")
+    print(f"[Filtro apuesta simple] count_multiple_excluidas: {count_multiple_excluidas}")
+    _imprimir_debug_filtro("Filtro apuesta simple (despues)", df_filtrado, col_bet_type, normalize_text)
+    if df_filtrado.empty:
+        print("[WARNING] [Filtro apuesta simple] El filtro dejo 0 filas.")
+        print(
+            df[[col_user, col_sport, col_bet_type, col_status, col_market, col_selection, col_stake, col_event, "fecha_apuesta"]]
+            .head(20)
+            .to_string(index=False)
         )
-        if col_ticket_id is None:
-            print("[Filtro apuesta simple] No se encontro columna ticket_id. Se omite inferencia.")
-        else:
-            col_bet_id = _get_col(
-                df,
-                ["bet_id", "betid", "id_bet", "idapuesta", "apuesta_id"],
-                obligatorio=False,
-                nombre_logico="bet_id",
-            )
-            if col_bet_id is not None:
-                legs_por_ticket = df.groupby(col_ticket_id)[col_bet_id].transform("count")
-            elif col_selection is not None:
-                legs_por_ticket = df.groupby(col_ticket_id)[col_selection].transform("count")
-            else:
-                legs_por_ticket = df.groupby(col_ticket_id)[col_ticket_id].transform("count")
-
-            print("[Filtro apuesta simple] Metodo utilizado: B")
-            print("[Filtro apuesta simple] Distribucion legs_por_ticket (top 5):")
-            print(legs_por_ticket.value_counts().head(5))
-            antes = len(df)
-            df_filtrado = df[legs_por_ticket == 1].copy()
-            print(f"[Filtro apuesta simple] Registros antes del filtro: {antes}")
-            print(f"[Filtro apuesta simple] Registros despues: {len(df_filtrado)}")
-            if df_filtrado.empty:
-                print("[WARNING] [Filtro apuesta simple] El filtro dejo 0 filas. Se desactiva el filtro.")
-            else:
-                df = df_filtrado
+    else:
+        df = df_filtrado
 
     _imprimir_debug_filtro("Filtro estado (antes)", df, col_status)
     status_norm = df[col_status].astype(str).str.lower()
@@ -1583,3 +1575,8 @@ def ejecutar_motor_multicuenta(
 
     print("\n================= MOTOR MULTI-CUENTA FINALIZADO =================\n")
     return df_multi, df_self
+
+
+
+
+

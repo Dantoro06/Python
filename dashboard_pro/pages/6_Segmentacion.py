@@ -23,25 +23,32 @@ if PROJECT_ROOT not in sys.path:
 
 from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
 
-DASHBOARD_DATA_DIR = Path(PROJECT_ROOT) / "Data Dashboard"
-DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
-REPORTS_DIR = Path(PROJECT_ROOT) / "reports"
+try:
+    from src.utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
+except Exception:
+    from utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
 
 
-def _resolver_json(nombre: str) -> Path:
-    primary = DASHBOARD_DATA_DIR / nombre
-    if primary.exists():
-        return primary
-    return REPORTS_DIR / nombre
+def cargar_json(nombre: str) -> Path:
+    p1 = DASHBOARD_DATA_DIR / nombre
+    p2 = REPORTS_DIR / nombre
+    if p1.exists():
+        return p1
+    if p2.exists():
+        return p2
+    raise FileNotFoundError(
+        f"No se encontro '{nombre}' en '{DASHBOARD_DATA_DIR}' ni en '{REPORTS_DIR}'."
+    )
 
 
-REPORTE_PATH = _resolver_json("reporte_riesgo_hiddingbonus.json")
-HISTORICO_PATH = _resolver_json("historico_riesgo_hiddingbonus.json")
+REPORTE_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
+HISTORICO_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_hiddingbonus.json"
 
 
 def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
-    path = _resolver_json("reporte_riesgo_hiddingbonus.json")
-    if not path.exists():
+    try:
+        path = cargar_json("reporte_riesgo_hiddingbonus.json")
+    except FileNotFoundError:
         return None
     try:
         with path.open("r", encoding="utf-8-sig") as f:
@@ -57,8 +64,9 @@ def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
 
 
 def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
-    path = _resolver_json("historico_riesgo_hiddingbonus.json")
-    if not path.exists():
+    try:
+        path = cargar_json("historico_riesgo_hiddingbonus.json")
+    except FileNotFoundError:
         return pd.DataFrame()
     try:
         with path.open("r", encoding="utf-8-sig") as f:
