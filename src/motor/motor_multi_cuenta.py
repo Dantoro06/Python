@@ -100,17 +100,19 @@ def normalizar_base(df: pd.DataFrame, strict_schema: bool = False) -> pd.DataFra
         if origen is not None:
             df[canon] = df[origen]
 
-    # bet_type: canonico esencial para el motor (modo tolerante/estricto)
+    # bet_type: canonico esencial para el motor (tolerante)
     if "bet_type" not in df.columns:
         df["_bet_type_inferido"] = True
         if "ticket_id" in df.columns:
-            n_bets_ticket = df.groupby("ticket_id")["bet_id"].transform("nunique")
+            if "bet_id" in df.columns:
+                n_bets_ticket = df.groupby("ticket_id")["bet_id"].transform("nunique")
+            else:
+                n_bets_ticket = df.groupby("ticket_id")["ticket_id"].transform("size")
             df["bet_type"] = np.where(n_bets_ticket > 1, "multiple", "single")
-            print("[Schema] bet_type inferido con ticket_id")
+            print("[Schema] bet_type inferido automaticamente usando ticket_id")
         else:
-            if strict_schema:
-                raise ValueError("Falta bet_type y no hay ticket_id para inferir")
             df["bet_type"] = "single"
+            print("[Schema] bet_type inferido automaticamente como 'single' (sin ticket_id)")
     else:
         df["_bet_type_inferido"] = False
         df["bet_type"] = df["bet_type"].astype(str).str.lower().str.strip()

@@ -499,12 +499,21 @@ def _calcular_score_y_prioridad(df_casos: pd.DataFrame) -> pd.DataFrame:
 
     p95 = df_out["total_apostado"].dropna().quantile(0.95) if not df_out.empty else 0.0
 
+    # Evita FutureWarning de downcasting en fillna sobre object dtypes.
+    withdraw_24h_num = pd.to_numeric(df_out["withdraw_24h_flag"], errors="coerce").fillna(0)
+    ratio_num = pd.to_numeric(df_out["withdraw_vs_deposit_ratio"], errors="coerce").fillna(0)
+    n_confirmados_num = pd.to_numeric(
+        df_out["n_confirmados_hybrid_entidad"], errors="coerce"
+    ).fillna(0)
+    dif_rel_num = pd.to_numeric(df_out["dif_rel_max_vs_total"], errors="coerce").fillna(1)
+    total_apostado_num = pd.to_numeric(df_out["total_apostado"], errors="coerce").fillna(0)
+
     score = pd.Series(0, index=df_out.index, dtype="int64")
-    score += 30 * df_out["withdraw_24h_flag"].fillna(False).astype(int)
-    score += 20 * (df_out["withdraw_vs_deposit_ratio"].fillna(0) >= 0.8).astype(int)
-    score += 20 * (df_out["n_confirmados_hybrid_entidad"].fillna(0) >= 2).astype(int)
-    score += 10 * (df_out["dif_rel_max_vs_total"].fillna(1) <= 0.02).astype(int)
-    score += 10 * (df_out["total_apostado"].fillna(0) >= p95).astype(int)
+    score += 30 * (withdraw_24h_num >= 1).astype("int64")
+    score += 20 * (ratio_num >= 0.8).astype("int64")
+    score += 20 * (n_confirmados_num >= 2).astype("int64")
+    score += 10 * (dif_rel_num <= 0.02).astype("int64")
+    score += 10 * (total_apostado_num >= p95).astype("int64")
 
     df_out["aml_score"] = score.clip(upper=100)
     df_out["prioridad"] = np.select(
@@ -530,7 +539,9 @@ def _generar_watchlist(df_casos: pd.DataFrame) -> pd.DataFrame:
         )
 
     base = df_casos.copy()
-    base["n_confirmados_hybrid"] = base["confirmado_hybrid"].astype(int)
+    base["n_confirmados_hybrid"] = (
+        pd.to_numeric(base["confirmado_hybrid"], errors="coerce").fillna(0).astype("int64")
+    )
     agg = (
         base.groupby(["entidad_id", "entidad_tipo"])
         .agg(
