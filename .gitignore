@@ -1,13 +1,19 @@
-# Python cache
+﻿# Python cache
 __pycache__/
 *.pyc
 
 # Local IDE
 .vscode/
 
-# Outputs / artefactos
+# Reportes pesados / temporales
 reports/
-*.patch
+
+# Patches locales (se siguen generando, pero Git no los trackea)
+Patch/
+cambios*.patch
+cambios_resumen.txt
+cambios_total.patch
+cambios_branch_vs_main.patch
 
 # Artefactos específicos del proyecto
 src/motor/motor_aml_pipeline_v0_integrado_bonus.txt
