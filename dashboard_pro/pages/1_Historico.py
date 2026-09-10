@@ -40,12 +40,12 @@ def cargar_json(nombre: str) -> Path:
     )
 
 
-DATA_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_hiddingbonus.json"
+DATA_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_multicuenta.json"
 
 
 def cargar_historico(path: Path = DATA_PATH) -> pd.DataFrame:
     try:
-        path = cargar_json("historico_riesgo_hiddingbonus.json")
+        path = cargar_json("historico_riesgo_multicuenta.json")
     except FileNotFoundError:
         return pd.DataFrame()
     if not path.exists():
@@ -77,7 +77,7 @@ def render_history():
     df = cargar_historico()
     if df.empty:
         st.warning(
-            "No hay histórico disponible. Asegúrate de que Data Dashboard/historico_riesgo_hiddingbonus.json "
+            "No hay histórico disponible. Asegúrate de que Data Dashboard/historico_riesgo_multicuenta.json "
             "exista y vuelva a cargar la aplicación."
         )
         return
@@ -100,13 +100,13 @@ def render_history():
         st.subheader("Evolución del ratio de sospecha")
         st.altair_chart(graf_ratio, use_container_width=True)
 
-    if {"transacciones_totales", "total_casos_detectados"}.issubset(df.columns):
+    if {"transacciones_totales", "total_casos_multi", "total_casos_self"}.issubset(df.columns):
         st.subheader("Resumen de ejecuciones")
         zoom_totales = alt.selection_interval(bind="scales", encodings=["x"])
         graf_totales = (
             alt.Chart(df)
             .transform_fold(
-                ["transacciones_totales", "total_casos_detectados"],
+                ["transacciones_totales", "total_casos_multi", "total_casos_self"],
                 as_=["Indicador", "Valor"],
             )
             .mark_bar()

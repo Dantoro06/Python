@@ -39,15 +39,15 @@ def cargar_json(nombre: str) -> Path:
     )
 
 
-DATA_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
+DATA_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_multicuenta.json"
 
 
 def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
     try:
-        path = cargar_json("reporte_riesgo_hiddingbonus.json")
+        path = cargar_json("reporte_riesgo_multicuenta.json")
     except FileNotFoundError:
         st.warning(
-            "No hay reporte actual. Coloca reporte_riesgo_hiddingbonus.json en Data Dashboard/ "
+            "No hay reporte actual. Coloca reporte_riesgo_multicuenta.json en Data Dashboard/ "
             "o ejecuta el motor para generarlo."
         )
         return None
@@ -98,13 +98,10 @@ def render_last_run():
     col_a.metric("Casos multiusuario", multi.get("casos_totales", 0))
     col_b.metric("Casos self-hedging", self_h.get("casos_totales", 0))
 
-    st.subheader("Top usuarios y eventos")
+    st.subheader("Top usuarios de riesgo")
     st.caption("Información leída directamente del JSON generado por el motor.")
     st.json(
-        {
-            "top_usuarios_riesgo": report.get("top_usuarios_riesgo", []),
-            "top_eventos_sospechosos": report.get("top_eventos_sospechosos", []),
-        },
+        report.get("top_usuarios_riesgo", []),
         expanded=False,
     )
 

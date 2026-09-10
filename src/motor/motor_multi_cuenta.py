@@ -1314,15 +1314,15 @@ def actualizar_historico_riesgo(
     meta = reporte_riesgo.get("metadata", {})
     resumen = reporte_riesgo.get("resumen_ejecucion", {})
     est = reporte_riesgo.get("estadisticas_riesgo", {})
-    fecha_iso = meta.get("fecha_ejecucion", datetime.now().isoformat(timespec="seconds"))
-    fecha_dia = fecha_iso[:10]
+    momento_fallback = datetime.now().astimezone()
+    fecha_iso = meta.get("fecha_ejecucion") or momento_fallback.isoformat(timespec="microseconds")
 
     multi = est.get("multiusuario", {}) or {}
     selfh = est.get("self_hedging", {}) or {}
 
     entry = {
-        "id_ejecucion": meta.get("id_ejecucion") or f"EXEC-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
-        "fecha_ejecucion": fecha_dia,
+        "id_ejecucion": meta.get("id_ejecucion") or f"EXEC-{momento_fallback.strftime('%Y%m%d-%H%M%S-%f')}",
+        "fecha_ejecucion": fecha_iso,
         "total_casos_multi": int(multi.get("casos_totales", 0) or 0),
         "total_casos_self": int(selfh.get("casos_totales", 0) or 0),
         "ratio_sospecha_global": float(resumen.get("ratio_sospecha_global", 0.0)),
@@ -1330,14 +1330,15 @@ def actualizar_historico_riesgo(
     }
 
     if os.path.exists(ruta_historico):
-        try:
-            historico = json.load(open(ruta_historico, encoding="utf-8-sig"))
-        except Exception:
-            historico = {"ejecuciones": []}
+        with open(ruta_historico, encoding="utf-8-sig") as f:
+            historico = json.load(f)
     else:
         historico = {"ejecuciones": []}
 
-    historico.setdefault("ejecuciones", []).append(entry)
+    ejecuciones = historico.setdefault("ejecuciones", [])
+    if any(ejecucion.get("id_ejecucion") == entry["id_ejecucion"] for ejecucion in ejecuciones):
+        return
+    ejecuciones.append(entry)
     with open(ruta_historico, "w", encoding="utf-8-sig") as f:
         json.dump(historico, f, ensure_ascii=False, indent=2)
 
@@ -1364,6 +1365,7 @@ def generar_reporte_json(
     Genera un archivo JSON con el resumen de riesgo (multiusuario + self-hedging).
     """
 
+    momento_ejecucion = datetime.now().astimezone()
     df_multi = df_multi if df_multi is not None else pd.DataFrame()
     df_self = df_self if df_self is not None else pd.DataFrame()
     archivos_entrada = archivos_entrada or []
@@ -1459,7 +1461,8 @@ def generar_reporte_json(
         "metadata": {
             "nombre_motor": "MultiCuentaRiskEngine",
             "version": "1.0.0",
-            "fecha_ejecucion": datetime.now().isoformat(timespec="seconds"),
+            "id_ejecucion": f"EXEC-{momento_ejecucion.strftime('%Y%m%d-%H%M%S-%f')}",
+            "fecha_ejecucion": momento_ejecucion.isoformat(timespec="microseconds"),
             "servidor": socket.gethostname(),
             "archivos_procesados": list(archivos_entrada),
         },
