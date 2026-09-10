@@ -52,6 +52,32 @@ HISTORICO_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_multicuenta.json"
 PRIORIDAD_RIESGO = {"CRITICO": 4, "ALTO": 3, "MEDIO": 2, "BAJO": 1}
 
 
+def _etiqueta_motor(motor):
+    return {
+        "multi_cuenta": "Multi-Cuenta",
+        "self_hedging": "Self-Hedging",
+        "bonus_abuse": "Abuso de Bonos",
+    }.get(motor, motor)
+
+
+def _indicadores_visuales(valor):
+    if not isinstance(valor, str):
+        return valor
+    etiquetas = {
+        "multi_cuenta": "Multi-Cuenta",
+        "self_hedging": "Self-Hedging",
+        "bonus_abuse": "Abuso de Bonos",
+        "ratio_alto": "Ratio alto",
+        "retiro_rapido": "Retiro rápido",
+        "frecuencia_alta": "Frecuencia alta",
+    }
+    return " · ".join(etiquetas.get(indicador.strip(), indicador) for indicador in valor.split("|"))
+
+
+def _tabla_visual(df: pd.DataFrame) -> pd.DataFrame:
+    return df.astype(object).where(df.notna(), "—")
+
+
 def _leer_json(nombre: str, tipo):
     try:
         path = cargar_json(nombre)
@@ -161,8 +187,8 @@ def _panel_usuario(usuarios: Optional[pd.DataFrame], registros: Optional[List[Di
     usuario = usuarios[usuarios["user_id"] == seleccionado].iloc[0]
     col1, col2, col3 = st.columns(3)
     col1.metric("Nivel global", _kpi_value(usuario.get("nivel_riesgo"), "—"))
-    col2.metric("Score global", _kpi_value(usuario.get("score"), "—"))
-    col3.metric("Motor principal", _kpi_value(usuario.get("motor"), "—"))
+    col2.metric("Puntaje global", _kpi_value(usuario.get("score"), "—"))
+    col3.metric("Motor principal", _etiqueta_motor(_kpi_value(usuario.get("motor"), "—")))
     if registros is None:
         _aviso_fuente("pipeline_detalle.json")
         return
@@ -179,7 +205,17 @@ def _panel_usuario(usuarios: Optional[pd.DataFrame], registros: Optional[List[Di
         columna for columna in ["motor", "nivel_riesgo", "score", "flags", "evidencia", "event_name", "fecha_bucket"]
         if columna in detalle.columns
     ]
-    st.dataframe(detalle[columnas], use_container_width=True)
+    detalle_visual = detalle[columnas].copy()
+    if "motor" in detalle_visual.columns:
+        detalle_visual["motor"] = detalle_visual["motor"].map(_etiqueta_motor)
+    if "flags" in detalle_visual.columns:
+        detalle_visual["flags"] = detalle_visual["flags"].map(_indicadores_visuales)
+    detalle_visual = detalle_visual.rename(columns={
+        "motor": "Motor", "nivel_riesgo": "Nivel de riesgo", "score": "Puntaje",
+        "flags": "Indicadores", "evidencia": "Evidencia", "event_name": "Evento",
+        "fecha_bucket": "Ventana temporal",
+    })
+    st.dataframe(_tabla_visual(detalle_visual), use_container_width=True)
 
 
 st.set_page_config(
@@ -219,7 +255,7 @@ else:
     col5.metric("Casos Multi-Cuenta", _kpi_value((estadisticas.get("multiusuario") or {}).get("casos_totales"), 0))
     col6.metric("Casos Self-Hedging", _kpi_value((estadisticas.get("self_hedging") or {}).get("casos_totales"), 0))
     col7.metric(
-        "Casos Bonus Abuse",
+        "Casos Abuso de Bonos",
         sum(registro.get("motor") == "bonus_abuse" for registro in detalle_registros)
         if detalle_registros is not None else "—",
     )
@@ -268,14 +304,17 @@ else:
     if conteos.empty:
         st.info("No hay detecciones con niveles de riesgo disponibles.")
     else:
-        chart = alt.Chart(conteos).mark_bar().encode(
+        conteos_visual = conteos.assign(motor=conteos["motor"].map(_etiqueta_motor))
+        chart = alt.Chart(conteos_visual).mark_bar().encode(
             x=alt.X("motor:N", title="Motor"),
             y="Casos:Q",
             color=alt.Color("nivel_riesgo:N", sort=list(PRIORIDAD_RIESGO), title="Nivel de riesgo"),
             tooltip=["motor:N", "nivel_riesgo:N", "Casos:Q"],
         )
         st.altair_chart(chart, use_container_width=True)
-        st.dataframe(conteos, use_container_width=True)
+        st.dataframe(_tabla_visual(conteos_visual.rename(columns={
+            "motor": "Motor", "nivel_riesgo": "Nivel de riesgo",
+        })), use_container_width=True)
 
 st.markdown("---")
 st.subheader("AML — 2 capas")
@@ -295,7 +334,14 @@ if usuarios_df is None:
 elif usuarios_df.empty:
     st.info("El pipeline no incluye usuarios identificados.")
 else:
-    st.dataframe(usuarios_df.head(10), use_container_width=True)
+    usuarios_visual = usuarios_df.head(10).copy()
+    usuarios_visual["motor"] = usuarios_visual["motor"].map(_etiqueta_motor)
+    usuarios_visual["flags"] = usuarios_visual["flags"].map(_indicadores_visuales)
+    usuarios_visual = usuarios_visual.rename(columns={
+        "user_id": "Usuario", "motor": "Motor", "nivel_riesgo": "Nivel de riesgo",
+        "score": "Puntaje de riesgo", "flags": "Indicadores",
+    })
+    st.dataframe(_tabla_visual(usuarios_visual), use_container_width=True)
 
 st.markdown("---")
 st.subheader("Top Eventos")
@@ -306,7 +352,15 @@ else:
     if eventos_df.empty:
         st.info("El pipeline no incluye detecciones con evento.")
     else:
-        st.dataframe(eventos_df.head(10), use_container_width=True)
+        eventos_visual = eventos_df.head(10).copy()
+        eventos_visual["Fuentes"] = eventos_visual["Fuentes"].map(
+            lambda fuentes: [_etiqueta_motor(motor) for motor in fuentes]
+        )
+        eventos_visual = eventos_visual.rename(columns={
+            "Fecha / bucket": "Ventana temporal", "Cantidad usuarios": "Cantidad de usuarios",
+            "Fuentes": "Motores",
+        })
+        st.dataframe(_tabla_visual(eventos_visual), use_container_width=True)
 
 st.markdown("---")
 st.subheader("Histórico")
@@ -328,7 +382,15 @@ else:
         st.altair_chart(graf_ratio, use_container_width=True)
     else:
         st.info("El histórico no contiene fecha_ejecucion y ratio_sospecha_global para graficar.")
-    st.dataframe(historico_df, use_container_width=True)
+    historico_visual = historico_df.copy().rename(columns={
+        "id_ejecucion": "ID de ejecución",
+        "fecha_ejecucion": "Fecha de ejecución",
+        "total_casos_multi": "Casos Multi-Cuenta",
+        "total_casos_self": "Casos Self-Hedging",
+        "ratio_sospecha_global": "Ratio de sospecha global",
+        "transacciones_totales": "Transacciones totales",
+    })
+    st.dataframe(_tabla_visual(historico_visual), use_container_width=True)
 
 st.markdown("---")
 _panel_usuario(usuarios_df, detalle_registros)
