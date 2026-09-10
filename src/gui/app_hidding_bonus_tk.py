@@ -60,7 +60,7 @@ def construir_gui():
     ventana.title("Motor de Riesgo - Nueve11")
     ventana.geometry("1100x700")
 
-    # Estilo para botÇün principal (verde sÇülido con texto blanco)
+    # Estilo para botón principal (verde sólido con texto blanco)
     style = ttk.Style(ventana)
     style.theme_use("clam")
     style.configure(
@@ -121,11 +121,11 @@ def construir_gui():
     sidebar.bind("<Configure>", _sync_sidebar_scroll)
     sidebar_canvas.bind("<Configure>", _sync_sidebar_width)
 
-    # ??rea principal a la derecha
+    # Área principal a la derecha
     main_area = ttk.Frame(contenedor)
     main_area.pack(side="left", fill="both", expand=True)
 
-    # ----- CategorÇða: Archivos -----
+    # ----- Categoría: Archivos -----
     archivos_frame = ttk.LabelFrame(sidebar, text="Archivos")
     archivos_frame.pack(fill="x", padx=5, pady=5)
 
@@ -133,7 +133,7 @@ def construir_gui():
     base_rutas: list[str] = []
     base_df_cache = {"df": None}
 
-    ttk.Label(archivos_frame, text="Archivo base estÇ­ndar:").pack(anchor="w", padx=5, pady=(5, 0))
+    ttk.Label(archivos_frame, text="Archivo base estándar:").pack(anchor="w", padx=5, pady=(5, 0))
     entry_base = ttk.Entry(archivos_frame, textvariable=base_var, width=40, state="readonly")
     entry_base.pack(fill="x", padx=5, pady=2)
 
@@ -170,12 +170,12 @@ def construir_gui():
         padx=5, pady=(0, 6), anchor="w", fill="x"
     )
 
-    # ----- CategorÇða: Archivos para cruce -----
+    # ----- Categoría: Archivos para cruce -----
     cruce_frame = ttk.LabelFrame(sidebar, text="Archivos para cruce")
     cruce_frame.pack(fill="x", padx=5, pady=5)
     ttk.Label(cruce_frame, text="Espacio reservado para futuros cruces.").pack(anchor="w", padx=5, pady=(6, 2))
 
-    # Base de bonos dentro de la secciÇün de cruce
+    # Base de bonos dentro de la sección de cruce
     bonus_var = tk.StringVar()
     ttk.Label(cruce_frame, text="Base de bonos (opcional):").pack(anchor="w", padx=5, pady=(6, 0))
     entry_bonus = ttk.Entry(cruce_frame, textvariable=bonus_var, width=40, state="readonly")
@@ -248,8 +248,8 @@ def construir_gui():
         padx=5, pady=(0, 6), anchor="w", fill="x"
     )
 
-    # ----- CategorÇða: AnÇ­lisis de Riesgo -----
-    analisis_frame = ttk.LabelFrame(sidebar, text="AnÇ­lisis de Riesgo")
+    # ----- Categoría: Análisis de Riesgo -----
+    analisis_frame = ttk.LabelFrame(sidebar, text="Análisis de Riesgo")
     analisis_frame.pack(fill="x", padx=5, pady=5)
 
     btn_bonus = ttk.Button(analisis_frame, text="Motor Bonus Abuse", style="Success.TButton")
@@ -349,15 +349,15 @@ def construir_gui():
         variable=run_ratio_var,
     ).pack(fill="x", padx=5, pady=(0, 4))
 
-    ttk.Button(analisis_frame, text="Self-Hedging (prÇüximo)", state="disabled").pack(fill="x", padx=5, pady=2)
+    ttk.Button(analisis_frame, text="Self-Hedging (próximo)", state="disabled").pack(fill="x", padx=5, pady=2)
 
-    # ----- CategorÇða: Resultados -----
+    # ----- Categoría: Resultados -----
     resultados_frame = ttk.LabelFrame(sidebar, text="Resultados")
     resultados_frame.pack(fill="x", padx=5, pady=5)
 
-    btn_ultimo = None  # se asigna tras crear el botÇün
+    btn_ultimo = None  # se asigna tras crear el botón
 
-    # Helpers para abrir el Ç§ltimo resultado generado
+    # Helpers para abrir el último resultado generado
     def obtener_ultimo_reporte():
         if not REPORTS_DIR.exists():
             return None
@@ -384,9 +384,9 @@ def construir_gui():
             return
         try:
             os.startfile(ultimo)
-            log.insert(tk.END, f"Abrir Ç§ltimo resultado: {ultimo.name}\n")
+            log.insert(tk.END, f"Abrir último resultado: {ultimo.name}\n")
         except Exception as e:
-            log.insert(tk.END, f"ERROR al abrir Ç§ltimo resultado: {e}\n")
+            log.insert(tk.END, f"ERROR al abrir último resultado: {e}\n")
         log.see(tk.END)
         actualizar_estado_ultimo()
 
@@ -397,7 +397,7 @@ def construir_gui():
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir la carpeta de resultados:\n{e}")
 
-    # ----- Ç?rea principal: logs y progreso -----
+    # ----- Área principal: logs y progreso -----
     log = scrolledtext.ScrolledText(main_area, width=90, height=20, font=("Consolas", 9))
     log.pack(fill="both", expand=True, padx=10, pady=8)
 
@@ -453,7 +453,7 @@ def construir_gui():
         base_df_cache["df"] = df_base if df_base is not None else pd.DataFrame()
         return base_df_cache["df"]
 
-    # Ejecuta Bonus Abuse con las rutas indicadas (usado por run normal y re-ejecuciÇün)
+    # Ejecuta Bonus Abuse con las rutas indicadas (usado por run normal y re-ejecución)
     def ejecutar_bonus_con_rutas(rutas_base: list[str], ruta_bonus: str):
         def tarea():
             try:
@@ -644,7 +644,7 @@ def construir_gui():
                 set_progress_indeterminate()
                 log.insert(tk.END, "ERROR\n" + traceback.format_exc())
                 log.see(tk.END)
-                messagebox.showerror("Error", "OcurriÇü un error ejecutando el motor Multi-Cuenta.")
+                messagebox.showerror("Error", "Ocurrió un error ejecutando el motor Multi-Cuenta.")
             finally:
                 btn_multi.state(["!disabled"])
 
@@ -918,8 +918,8 @@ def construir_gui():
 
     btn_aml.configure(command=lanzar_aml_pipeline)
 
-    # BotÇün para abrir el Ç§ltimo resultado generado
-    btn_ultimo = ttk.Button(resultados_frame, text="Abrir Ç§ltimo resultado", command=abrir_ultimo_reporte)
+    # Botón para abrir el último resultado generado
+    btn_ultimo = ttk.Button(resultados_frame, text="Abrir último resultado", command=abrir_ultimo_reporte)
     btn_ultimo.pack(fill="x", padx=5, pady=(6, 4))
     ttk.Button(resultados_frame, text="Abrir carpeta de resultados", command=abrir_resultados).pack(
         fill="x", padx=5, pady=6
