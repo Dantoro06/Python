@@ -123,7 +123,22 @@ def render_events_view():
         "Eventos Self-Hedging", eventos_df["Fuentes"].map(lambda fuentes: "self_hedging" in fuentes).sum()
     )
 
-    st.dataframe(eventos_df, use_container_width=True)
+    etiquetas_motor = {
+        "multi_cuenta": "Multi-Cuenta",
+        "self_hedging": "Self-Hedging",
+        "bonus_abuse": "Abuso de Bonos",
+    }
+    eventos_visual = eventos_df.copy()
+    eventos_visual["Fuentes"] = eventos_visual["Fuentes"].map(
+        lambda fuentes: [etiquetas_motor.get(motor, motor) for motor in fuentes]
+    )
+    eventos_visual = eventos_visual.rename(columns={
+        "Fecha / bucket": "Ventana temporal",
+        "Cantidad usuarios": "Cantidad de usuarios",
+        "Fuentes": "Riesgo detectado",
+    })
+    eventos_visual = eventos_visual.astype(object).where(eventos_visual.notna(), "—")
+    st.dataframe(eventos_visual, use_container_width=True)
 
 
 render_events_view()
