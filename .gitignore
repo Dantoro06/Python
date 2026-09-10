@@ -31,3 +31,6 @@ reports/
 
 # Artefactos específicos del proyecto
 src/motor/motor_aml_pipeline_v0_integrado_bonus.txt
+
+# Entorno virtual local
+.venv/

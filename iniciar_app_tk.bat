@@ -12,7 +12,7 @@ REM Asegurar ejecucion desde la carpeta Motor Riesgo
 cd /d "%~dp0"
 
 REM Activar entorno virtual
-call ..\venv_riesgo\Scripts\activate.bat
+call .\.venv\Scripts\activate.bat
 
 REM Ejecutar aplicacion TK
 python src\gui\app_hidding_bonus_tk.py
