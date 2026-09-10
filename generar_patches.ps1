@@ -45,12 +45,12 @@ $coreFiles = @(
   "src/utils/paths_dashboard.py",
   "src/utils/dashboard_riesgo.py",
   "dashboard_pro/dashboard.py",
-  "dashboard_pro/pages/1_Historico.py",
-  "dashboard_pro/pages/2_Ultima_Ejecucion.py",
-  "dashboard_pro/pages/3_Abuso_Bonus.py",
+  "dashboard_pro/pages/1_Histórico.py",
+  "dashboard_pro/pages/2_Última_Ejecución.py",
+  "dashboard_pro/pages/3_Abuso_de_Bonos.py",
   "dashboard_pro/pages/4_Usuarios.py",
   "dashboard_pro/pages/5_Eventos.py",
-  "dashboard_pro/pages/6_Segmentacion.py"
+  "dashboard_pro/pages/6_Segmentación.py"
 )
 
 # Filtrar solo existentes (por si algún archivo fue borrado)
