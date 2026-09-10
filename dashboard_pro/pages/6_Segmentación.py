@@ -116,21 +116,30 @@ def render_segmentation_view():
                 value_name="casos",
             )
             zoom_casos = alt.selection_interval(bind="scales", encodings=["x"])
+            melted_visual = melted.copy()
+            melted_visual["tipo"] = melted_visual["tipo"].replace({
+                "total_casos_multi": "Casos Multi-Cuenta",
+                "total_casos_self": "Casos Self-Hedging",
+            })
             chart = (
-                alt.Chart(melted)
+                alt.Chart(melted_visual)
                 .mark_line(point=True)
                 .encode(
-                    x="fecha_ejecucion:T",
-                    y="casos:Q",
+                    x=alt.X("fecha_ejecucion:T", title="Fecha de ejecución"),
+                    y=alt.Y("casos:Q", title="Casos"),
                     color=alt.Color(
                         "tipo:N",
                         scale=alt.Scale(
-                            domain=["total_casos_multi", "total_casos_self"],
+                            domain=["Casos Multi-Cuenta", "Casos Self-Hedging"],
                             range=["#1f77b4", "#ff7f0e"],
                         ),
-                        title="Tipo",
+                        title="Riesgo detectado",
                     ),
-                    tooltip=["fecha_ejecucion:T", "tipo:N", "casos:Q"],
+                    tooltip=[
+                        alt.Tooltip("fecha_ejecucion:T", title="Fecha de ejecución"),
+                        alt.Tooltip("tipo:N", title="Tipo"),
+                        alt.Tooltip("casos:Q", title="Casos"),
+                    ],
                 )
                 .add_selection(zoom_casos)
                 .interactive()
@@ -144,9 +153,12 @@ def render_segmentation_view():
                 alt.Chart(historico_df)
                 .mark_line(point=True)
                 .encode(
-                    x="fecha_ejecucion:T",
-                    y="ratio_sospecha_global:Q",
-                    tooltip=["fecha_ejecucion:T", "ratio_sospecha_global:Q"],
+                    x=alt.X("fecha_ejecucion:T", title="Fecha de ejecución"),
+                    y=alt.Y("ratio_sospecha_global:Q", title="Ratio de sospecha global"),
+                    tooltip=[
+                        alt.Tooltip("fecha_ejecucion:T", title="Fecha de ejecución"),
+                        alt.Tooltip("ratio_sospecha_global:Q", title="Ratio de sospecha global"),
+                    ],
                 )
                 .add_selection(zoom_ratio)
                 .interactive()
@@ -159,7 +171,24 @@ def render_segmentation_view():
         return
 
     params = report.get("parametros_motor", {})
-    st.json(params, expanded=False)
+    etiquetas_parametros = {
+        "tolerancia_cobertura": "Tolerancia de cobertura",
+        "min_total_apostado": "Mínimo total apostado",
+        "max_apuestas_por_seleccion": "Máximo de apuestas por selección",
+        "ratio_min_margen": "Ratio mínimo de margen",
+        "ratio_max_margen": "Ratio máximo de margen",
+        "tol_abs": "Tolerancia absoluta",
+        "k": "Factor K",
+        "tol_max": "Tolerancia máxima",
+        "modo_tolerancia": "Modo de tolerancia",
+    }
+    parametros_visual = pd.DataFrame(
+        [(etiquetas_parametros.get(clave, clave), valor) for clave, valor in params.items()],
+        columns=["Parámetro", "Valor"],
+        dtype=object,
+    )
+    parametros_visual = parametros_visual.where(parametros_visual.notna(), "—")
+    st.dataframe(parametros_visual, use_container_width=True)
 
 
 render_segmentation_view()
