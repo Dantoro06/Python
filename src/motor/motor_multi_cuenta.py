@@ -183,8 +183,8 @@ def _get_col(
 ) -> Optional[str]:
     """
     Devuelve el nombre de columna existente en df que coincida con alguna
-    de las opciones dadas, ignorando diferencias de mayÃºsculas, acentos,
-    guiones, espacios y caracteres no alfanumÃ©ricos. Soporta encabezados
+    de las opciones dadas, ignorando diferencias de mayúsculas, acentos,
+    guiones, espacios y caracteres no alfanuméricos. Soporta encabezados
     con BOM y variaciones leves del nombre.
     """
 
@@ -222,7 +222,7 @@ def _get_col(
     print(f"[_get_col DEBUG] columnas normalizadas = {original_to_norm}")
     referencia = f" para '{nombre_logico}'" if nombre_logico else ""
     raise KeyError(
-        f"No se encontrÃ³ ninguna columna compatible{referencia}. Posibles alias: {posibles}"
+        f"No se encontró ninguna columna compatible{referencia}. Posibles alias: {posibles}"
     )
 
 
@@ -353,7 +353,7 @@ def _imprimir_debug_filtro(
 
 
 # ============================================================
-# PreparaciÃ³n de la tabla base (filtros + columnas estÃ¡ndar)
+# Preparación de la tabla base (filtros + columnas estándar)
 # ============================================================
 
 def preparar_tabla_base_multicuenta(
@@ -685,7 +685,7 @@ def generar_smoke_df() -> pd.DataFrame:
 
 
 # ============================================================
-# Detector multi-usuario (trÃ­os 1/X/2)
+# Detector multi-usuario (tríos 1/X/2)
 # ============================================================
 
 def detectar_trios_multiusuario(
@@ -1291,7 +1291,7 @@ def detectar_self_hedging(
     return df_resumen
 
 # ============================================================
-# Reportes JSON / HistÃ³rico
+# Reportes JSON / Histórico
 # ============================================================
 
 def _contar_niveles(df: Optional[pd.DataFrame], col_nivel: str) -> dict:
@@ -1494,7 +1494,7 @@ def generar_reporte_json(
     try:
         actualizar_historico_riesgo(reporte_riesgo)
     except Exception as e:
-        print("[ADVERTENCIA] No se pudo actualizar el histÃ³rico de riesgo:")
+        print("[ADVERTENCIA] No se pudo actualizar el histórico de riesgo:")
         print(e)
 
 
@@ -1521,7 +1521,7 @@ def ejecutar_motor_multicuenta(
     progress_callback: ProgressCallback = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Ejecuta detecciÃ³n multiusuario y self-hedging usando UNA base ya preparada.
+    Ejecuta detección multiusuario y self-hedging usando UNA base ya preparada.
     """
     print("\n================= INICIANDO MOTOR MULTI-CUENTA =================\n")
 

@@ -49,7 +49,7 @@ def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
         path = cargar_json("reporte_riesgo_hiddingbonus.json")
     except FileNotFoundError:
         st.warning(
-            "No se encontrÃ³ reporte_riesgo_hiddingbonus.json en Data Dashboard/. Ejecuta el motor "
+            "No se encontró reporte_riesgo_hiddingbonus.json en Data Dashboard/. Ejecuta el motor "
             "o coloca el archivo en la carpeta indicada."
         )
         return None

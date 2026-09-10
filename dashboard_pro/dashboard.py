@@ -69,7 +69,7 @@ def cargar_reporte_reciente(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any
         path = cargar_json("reporte_riesgo_hiddingbonus.json")
     except FileNotFoundError:
         st.warning(
-            "No se encontrÃ³ el archivo de reporte reciente. Ejecuta el motor para generar "
+            "No se encontró el archivo de reporte reciente. Ejecuta el motor para generar "
             "reporte_riesgo_hiddingbonus.json en la carpeta Data Dashboard/."
         )
         return None
