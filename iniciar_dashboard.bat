@@ -11,7 +11,7 @@ REM Asegura que el BAT se ejecute desde Motor Riesgo
 cd /d "%~dp0"
 
 REM Activar entorno virtual
-call ..\venv_riesgo\Scripts\activate.bat
+call .\.venv\Scripts\activate.bat
 
 REM Ejecutar dashboard Streamlit
 streamlit run dashboard_pro\dashboard.py
