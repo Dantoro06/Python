@@ -90,9 +90,12 @@ def render_history():
             alt.Chart(df)
             .mark_line(point=True)
             .encode(
-                x=alt.X("fecha_ejecucion:T", title="Fecha"),
-                y=alt.Y("ratio_sospecha_global:Q", title="Ratio de sospecha"),
-                tooltip=["fecha_ejecucion:T", "ratio_sospecha_global:Q"],
+                x=alt.X("fecha_ejecucion:T", title="Fecha de ejecución"),
+                y=alt.Y("ratio_sospecha_global:Q", title="Ratio de sospecha global"),
+                tooltip=[
+                    alt.Tooltip("fecha_ejecucion:T", title="Fecha de ejecución"),
+                    alt.Tooltip("ratio_sospecha_global:Q", title="Ratio de sospecha global"),
+                ],
             )
             .add_selection(zoom_ratio)
             .interactive()
@@ -109,12 +112,21 @@ def render_history():
                 ["transacciones_totales", "total_casos_multi", "total_casos_self"],
                 as_=["Indicador", "Valor"],
             )
+            .transform_calculate(
+                Indicador_visual="datum.Indicador === 'total_casos_multi' ? 'Casos Multi-Cuenta' : "
+                "datum.Indicador === 'total_casos_self' ? 'Casos Self-Hedging' : "
+                "datum.Indicador === 'transacciones_totales' ? 'Transacciones totales' : datum.Indicador"
+            )
             .mark_bar()
             .encode(
-                x="fecha_ejecucion:T",
+                x=alt.X("fecha_ejecucion:T", title="Fecha de ejecución"),
                 y="Valor:Q",
-                color="Indicador:N",
-                tooltip=["fecha_ejecucion:T", "Indicador:N", "Valor:Q"],
+                color=alt.Color("Indicador_visual:N", title="Indicador"),
+                tooltip=[
+                    alt.Tooltip("fecha_ejecucion:T", title="Fecha de ejecución"),
+                    alt.Tooltip("Indicador_visual:N", title="Indicador"),
+                    "Valor:Q",
+                ],
             )
             .add_selection(zoom_totales)
             .interactive()
@@ -122,7 +134,16 @@ def render_history():
         st.altair_chart(graf_totales, use_container_width=True)
 
     st.subheader("Detalle del histórico")
-    st.dataframe(df, use_container_width=True)
+    historico_visual = df.copy().rename(columns={
+        "id_ejecucion": "ID de ejecución",
+        "fecha_ejecucion": "Fecha de ejecución",
+        "total_casos_multi": "Casos Multi-Cuenta",
+        "total_casos_self": "Casos Self-Hedging",
+        "ratio_sospecha_global": "Ratio de sospecha global",
+        "transacciones_totales": "Transacciones totales",
+    })
+    historico_visual = historico_visual.astype(object).where(historico_visual.notna(), "—")
+    st.dataframe(historico_visual, use_container_width=True)
 
 
 render_history()
