@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import pandas as pd
 import streamlit as st
 
 # === HABILITAR IMPORTS DESDE src/ ===
@@ -65,6 +66,19 @@ def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _valor_visual(valor):
+    return "—" if pd.isna(valor) else valor
+
+
+def _etiqueta_motor(motor):
+    return {
+        "multi_cuenta": "Multi-Cuenta",
+        "multiusuario": "Multi-Cuenta",
+        "self_hedging": "Self-Hedging",
+        "bonus_abuse": "Abuso de Bonos",
+    }.get(motor, motor)
+
+
 def render_last_run():
     st.set_page_config(page_title="Risk Monitor PRO — Última Ejecución")
     st.title("Risk Monitor PRO — Última Ejecución")
@@ -78,32 +92,42 @@ def render_last_run():
     estadisticas = report.get("estadisticas_riesgo", {})
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total transacciones", resumen.get("total_transacciones", 0))
-    col2.metric("Usuarios analizados", resumen.get("usuarios_analizados", 0))
-    col3.metric("Eventos analizados", resumen.get("eventos_analizados", 0))
-    ratio = float(resumen.get("ratio_sospecha_global", 0.0)) * 100
-    col4.metric("Ratio sospecha global", f"{ratio:.2f}%")
+    col1.metric("Transacciones analizadas 1X2", _valor_visual(resumen.get("total_transacciones", 0)))
+    col2.metric("Usuarios analizados 1X2", _valor_visual(resumen.get("usuarios_analizados", 0)))
+    col3.metric("Eventos analizados 1X2", _valor_visual(resumen.get("eventos_analizados", 0)))
+    ratio = resumen.get("ratio_sospecha_global", 0.0)
+    ratio_visual = "—" if pd.isna(ratio) else f"{float(ratio) * 100:.2f}%"
+    col4.metric("Ratio de sospecha 1X2", ratio_visual)
 
     st.markdown(
-        f"**Fecha de ejecución:** {meta.get('fecha_ejecucion', '—')} · "
-        f"Duración (seg): {resumen.get('tiempo_proceso_seg', '—')} · "
-        f"Archivos analizados: {len(meta.get('archivos_procesados', []) or [])}"
+        f"**Fecha de ejecución:** {_valor_visual(meta.get('fecha_ejecucion', '—'))} · "
+        f"Duración (seg): {_valor_visual(resumen.get('tiempo_proceso_seg', '—'))} · "
+        f"Archivos procesados: {len(meta.get('archivos_procesados', []) or [])}"
     )
 
-    st.subheader("Riesgo por fuente")
+    st.subheader("Detecciones por tipo de riesgo")
     multi = estadisticas.get("multiusuario", {})
     self_h = estadisticas.get("self_hedging", {})
 
     col_a, col_b = st.columns(2)
-    col_a.metric("Casos multiusuario", multi.get("casos_totales", 0))
-    col_b.metric("Casos self-hedging", self_h.get("casos_totales", 0))
+    col_a.metric("Casos Multi-Cuenta", _valor_visual(multi.get("casos_totales", 0)))
+    col_b.metric("Casos Self-Hedging", _valor_visual(self_h.get("casos_totales", 0)))
 
     st.subheader("Top usuarios de riesgo")
-    st.caption("Información leída directamente del JSON generado por el motor.")
-    st.json(
-        report.get("top_usuarios_riesgo", []),
-        expanded=False,
-    )
+    st.caption("Usuarios con detecciones de riesgo en la última ejecución.")
+    usuarios_visual = pd.DataFrame(report.get("top_usuarios_riesgo", [])).copy()
+    if "tipos_riesgo" in usuarios_visual.columns:
+        usuarios_visual["tipos_riesgo"] = usuarios_visual["tipos_riesgo"].map(
+            lambda tipos: [_etiqueta_motor(motor) for motor in tipos]
+            if isinstance(tipos, list) else _etiqueta_motor(tipos)
+        )
+    usuarios_visual = usuarios_visual.rename(columns={
+        "usuario_id": "Usuario", "casos_total": "Detecciones",
+        "casos_multiusuario": "Multi-Cuenta", "casos_self_hedging": "Self-Hedging",
+        "eventos_involucrados": "Eventos", "tipos_riesgo": "Riesgo detectado",
+    })
+    usuarios_visual = usuarios_visual.astype(object).where(usuarios_visual.notna(), "—")
+    st.dataframe(usuarios_visual, use_container_width=True)
 
 
 render_last_run()
