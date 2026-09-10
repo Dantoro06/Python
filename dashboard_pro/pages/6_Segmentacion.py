@@ -41,13 +41,13 @@ def cargar_json(nombre: str) -> Path:
     )
 
 
-REPORTE_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
-HISTORICO_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_hiddingbonus.json"
+REPORTE_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_multicuenta.json"
+HISTORICO_PATH = DASHBOARD_DATA_DIR / "historico_riesgo_multicuenta.json"
 
 
 def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
     try:
-        path = cargar_json("reporte_riesgo_hiddingbonus.json")
+        path = cargar_json("reporte_riesgo_multicuenta.json")
     except FileNotFoundError:
         return None
     try:
@@ -65,7 +65,7 @@ def cargar_reporte(path: Path = REPORTE_PATH) -> Optional[Dict[str, Any]]:
 
 def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
     try:
-        path = cargar_json("historico_riesgo_hiddingbonus.json")
+        path = cargar_json("historico_riesgo_multicuenta.json")
     except FileNotFoundError:
         return pd.DataFrame()
     try:
@@ -82,9 +82,16 @@ def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
 
     df_hist = pd.DataFrame(ejecuciones)
     if "fecha_ejecucion" in df_hist.columns:
-        df_hist["fecha_ejecucion"] = pd.to_datetime(
-            df_hist["fecha_ejecucion"], errors="coerce"
-        )
+        def normalizar_fecha(valor):
+            try:
+                fecha = pd.Timestamp(valor)
+                if fecha.tzinfo is not None:
+                    fecha = fecha.tz_localize(None)
+                return fecha
+            except (TypeError, ValueError, OverflowError):
+                return pd.NaT
+
+        df_hist["fecha_ejecucion"] = df_hist["fecha_ejecucion"].map(normalizar_fecha)
     return df_hist
 
 
@@ -97,28 +104,28 @@ def render_segmentation_view():
     if historico_df.empty:
         st.warning(
             "No hay histórico disponible para segmentar. Ejecuta el motor para generar "
-            "Data Dashboard/historico_riesgo_hiddingbonus.json."
+            "Data Dashboard/historico_riesgo_multicuenta.json."
         )
     else:
         st.subheader("Evolución de casos por tipo")
-        if {"casos_multiusuario", "casos_self_hedging"}.issubset(historico_df.columns):
+        if {"total_casos_multi", "total_casos_self"}.issubset(historico_df.columns):
             melted = historico_df.melt(
                 id_vars=["fecha_ejecucion"],
-                value_vars=["casos_multiusuario", "casos_self_hedging"],
+                value_vars=["total_casos_multi", "total_casos_self"],
                 var_name="tipo",
                 value_name="casos",
             )
             zoom_casos = alt.selection_interval(bind="scales", encodings=["x"])
             chart = (
                 alt.Chart(melted)
-                .mark_area(opacity=0.5)
+                .mark_line(point=True)
                 .encode(
                     x="fecha_ejecucion:T",
                     y="casos:Q",
                     color=alt.Color(
                         "tipo:N",
                         scale=alt.Scale(
-                            domain=["casos_multiusuario", "casos_self_hedging"],
+                            domain=["total_casos_multi", "total_casos_self"],
                             range=["#1f77b4", "#ff7f0e"],
                         ),
                         title="Tipo",
