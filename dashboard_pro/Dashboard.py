@@ -28,7 +28,6 @@ PROJECT_ROOT = os.path.dirname(BASE_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from utils.dashboard_riesgo import construir_reporte_riesgo_dict  # noqa: E402,F401
 
 try:
     from src.utils.paths_dashboard import DASHBOARD_DATA_DIR, REPORTS_DIR
