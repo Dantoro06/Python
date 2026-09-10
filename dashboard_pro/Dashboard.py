@@ -183,12 +183,12 @@ def _panel_usuario(usuarios: Optional[pd.DataFrame], registros: Optional[List[Di
 
 
 st.set_page_config(
-    page_title="Nueve11 Risk Monitor PRO",
+    page_title="Risk Monitor PRO — Dashboard",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("Nueve11 Risk Monitor PRO — Dashboard Principal")
+st.title("Risk Monitor PRO — Dashboard Principal")
 st.caption(
     "Panel oficial conectado al motor de riesgo. Usa los reportes JSON generados por "
     "el proceso de análisis sin replicar la lógica del motor."

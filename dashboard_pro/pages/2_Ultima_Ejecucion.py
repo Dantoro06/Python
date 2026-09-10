@@ -66,7 +66,8 @@ def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
 
 
 def render_last_run():
-    st.title("🔍 Última Ejecución")
+    st.set_page_config(page_title="Risk Monitor PRO — Última Ejecución")
+    st.title("Risk Monitor PRO — Última Ejecución")
 
     report = cargar_reporte()
     if not report:

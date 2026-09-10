@@ -82,7 +82,8 @@ def _df_niveles(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_abuse_view():
-    st.title("Abuso de Bonus")
+    st.set_page_config(page_title="Risk Monitor PRO — Abuso de Bonos")
+    st.title("Risk Monitor PRO — Abuso de Bonos")
     st.caption(f"Fuente: {DATA_PATH}")
 
     report = cargar_reporte()

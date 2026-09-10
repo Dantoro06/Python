@@ -95,7 +95,8 @@ def cargar_historico(path: Path = HISTORICO_PATH) -> pd.DataFrame:
 
 
 def render_segmentation_view():
-    st.title("📊 Segmentación de Riesgo — PRO")
+    st.set_page_config(page_title="Risk Monitor PRO — Segmentación")
+    st.title("Risk Monitor PRO — Segmentación")
 
     report = cargar_reporte()
     historico_df = cargar_historico()

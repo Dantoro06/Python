@@ -144,7 +144,8 @@ def construir_ranking(df_global: pd.DataFrame, df_detalle: pd.DataFrame) -> pd.D
 
 
 def render_users_view():
-    st.title("🧑‍💻 Usuarios Sospechosos — Análisis PRO")
+    st.set_page_config(page_title="Risk Monitor PRO — Usuarios")
+    st.title("Risk Monitor PRO — Usuarios")
 
     report = cargar_reporte()
     report_detalle = cargar_reporte(DASHBOARD_DATA_DIR / "pipeline_detalle.json")

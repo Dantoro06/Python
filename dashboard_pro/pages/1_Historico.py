@@ -71,7 +71,8 @@ def cargar_historico(path: Path = DATA_PATH) -> pd.DataFrame:
 
 
 def render_history():
-    st.title("📈 Histórico de Riesgo")
+    st.set_page_config(page_title="Risk Monitor PRO — Histórico")
+    st.title("Risk Monitor PRO — Histórico")
 
     df = cargar_historico()
     if df.empty:

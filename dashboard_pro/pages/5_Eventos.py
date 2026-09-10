@@ -66,7 +66,8 @@ def cargar_reporte(path: Path = DATA_PATH) -> Optional[List[Dict[str, Any]]]:
 
 
 def render_events_view():
-    st.title("Eventos de Riesgo — Análisis PRO")
+    st.set_page_config(page_title="Risk Monitor PRO — Eventos")
+    st.title("Risk Monitor PRO — Eventos")
     st.caption(f"Fuente: {DATA_PATH}")
 
     report = cargar_reporte()
