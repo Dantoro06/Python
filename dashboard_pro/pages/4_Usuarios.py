@@ -65,9 +65,47 @@ def cargar_reporte(path: Path = DATA_PATH) -> Optional[List[Dict[str, Any]]]:
     return None
 
 
+def _etiqueta_motor(motor):
+    return {
+        "multi_cuenta": "Multi-Cuenta",
+        "self_hedging": "Self-Hedging",
+        "bonus_abuse": "Abuso de Bonos",
+    }.get(motor, motor)
+
+
+def _indicadores_visuales(valor):
+    if not isinstance(valor, str):
+        return valor
+    etiquetas = {
+        "multi_cuenta": "Multi-Cuenta",
+        "self_hedging": "Self-Hedging",
+        "bonus_abuse": "Abuso de Bonos",
+        "ratio_alto": "Ratio alto",
+        "retiro_rapido": "Retiro rápido",
+        "frecuencia_alta": "Frecuencia alta",
+    }
+    return " · ".join(etiquetas.get(indicador.strip(), indicador) for indicador in valor.split("|"))
+
+
+def _tabla_visual(df: pd.DataFrame) -> pd.DataFrame:
+    return df.astype(object).where(df.notna(), "—")
+
+
 def render_user_ranking(df: pd.DataFrame):
     st.subheader("Top usuarios por casos detectados")
-    st.dataframe(df, use_container_width=True)
+    ranking_visual = df.copy()
+    if "Tipos de riesgo" in ranking_visual.columns:
+        ranking_visual["Tipos de riesgo"] = ranking_visual["Tipos de riesgo"].map(
+            lambda tipos: [_etiqueta_motor(motor) for motor in tipos]
+            if isinstance(tipos, list) else _etiqueta_motor(tipos)
+        )
+    ranking_visual = ranking_visual.rename(columns={
+        "Casos totales": "Detecciones", "Multiusuario": "Multi-Cuenta",
+        "Self-hedging": "Self-Hedging", "Bonus Abuse": "Abuso de Bonos",
+        "Nivel global": "Nivel de riesgo", "Score global": "Puntaje de riesgo",
+        "Tipos de riesgo": "Riesgo detectado",
+    })
+    st.dataframe(_tabla_visual(ranking_visual), use_container_width=True)
 
 
 def render_user_panel(df: pd.DataFrame, df_detalle: pd.DataFrame):
@@ -81,20 +119,22 @@ def render_user_panel(df: pd.DataFrame, df_detalle: pd.DataFrame):
     detalle = df[df["Usuario"] == seleccionado].iloc[0]
 
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Casos totales", detalle.get("Casos totales", 0))
-    col2.metric("Multiusuario", detalle.get("Multiusuario", 0))
-    col3.metric("Self-hedging", detalle.get("Self-hedging", 0))
-    col4.metric("Bonus Abuse", detalle.get("Bonus Abuse", 0))
+    col1.metric("Detecciones", detalle.get("Casos totales", 0))
+    col2.metric("Multi-Cuenta", detalle.get("Multiusuario", 0))
+    col3.metric("Self-Hedging", detalle.get("Self-hedging", 0))
+    col4.metric("Abuso de Bonos", detalle.get("Bonus Abuse", 0))
     col5.metric("Eventos", detalle.get("Eventos", 0))
 
-    st.write("Nivel global:", detalle.get("Nivel global"))
-    st.write("Score global:", detalle.get("Score global"))
+    nivel_visual = detalle.get("Nivel global")
+    puntaje_visual = detalle.get("Score global")
+    st.write("Nivel de riesgo:", "—" if pd.isna(nivel_visual) else nivel_visual)
+    st.write("Puntaje global:", "—" if pd.isna(puntaje_visual) else puntaje_visual)
 
     tipos = detalle.get("Tipos de riesgo")
-    if isinstance(tipos, list):
-        st.caption("Tipos de riesgo: " + ", ".join(tipos))
+    if isinstance(tipos, list) and tipos:
+        st.caption("Riesgo detectado: " + ", ".join(_etiqueta_motor(motor) for motor in tipos))
     else:
-        st.caption("Sin detalle de tipos de riesgo")
+        st.caption("Riesgo detectado: —")
 
     st.subheader("Detalle de detecciones del usuario")
     detecciones = df_detalle[
@@ -104,7 +144,17 @@ def render_user_panel(df: pd.DataFrame, df_detalle: pd.DataFrame):
         columna for columna in ["motor", "nivel_riesgo", "score", "flags", "evidencia", "event_name", "fecha_bucket"]
         if columna in detecciones.columns
     ]
-    st.dataframe(detecciones[columnas], use_container_width=True)
+    detalle_visual = detecciones[columnas].copy()
+    if "motor" in detalle_visual.columns:
+        detalle_visual["motor"] = detalle_visual["motor"].map(_etiqueta_motor)
+    if "flags" in detalle_visual.columns:
+        detalle_visual["flags"] = detalle_visual["flags"].map(_indicadores_visuales)
+    detalle_visual = detalle_visual.rename(columns={
+        "motor": "Motor", "nivel_riesgo": "Nivel de riesgo", "score": "Puntaje",
+        "flags": "Indicadores", "evidencia": "Evidencia", "event_name": "Evento",
+        "fecha_bucket": "Ventana temporal",
+    })
+    st.dataframe(_tabla_visual(detalle_visual), use_container_width=True)
 
 
 def construir_ranking(df_global: pd.DataFrame, df_detalle: pd.DataFrame) -> pd.DataFrame:
