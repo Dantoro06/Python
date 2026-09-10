@@ -81,6 +81,22 @@ def _df_niveles(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _indicadores_visuales(valor):
+    if not isinstance(valor, str):
+        return valor
+    etiquetas = {
+        "bonus_abuse": "Abuso de Bonos",
+        "ratio_alto": "Ratio alto",
+        "retiro_rapido": "Retiro rápido",
+        "frecuencia_alta": "Frecuencia alta",
+    }
+    return " · ".join(etiquetas.get(indicador.strip(), indicador) for indicador in valor.split("|"))
+
+
+def _tabla_visual(df: pd.DataFrame) -> pd.DataFrame:
+    return df.astype(object).where(df.notna(), "—")
+
+
 def render_abuse_view():
     st.set_page_config(page_title="Risk Monitor PRO — Abuso de Bonos")
     st.title("Risk Monitor PRO — Abuso de Bonos")
@@ -118,14 +134,24 @@ def render_abuse_view():
         tooltip=["Nivel", "Casos"],
     )
     st.altair_chart(chart, use_container_width=True)
-    st.dataframe(niveles_df, use_container_width=True)
+    st.dataframe(_tabla_visual(niveles_df), use_container_width=True)
 
     st.subheader("Detalle de detecciones")
     columnas = [
         columna for columna in ["user_id", "nivel_riesgo", "score", "flags", "evidencia"]
         if columna in df.columns
     ]
-    st.dataframe(df[columnas], use_container_width=True)
+    detalle_visual = df[columnas].copy()
+    if "flags" in detalle_visual.columns:
+        detalle_visual["flags"] = detalle_visual["flags"].map(_indicadores_visuales)
+    detalle_visual = detalle_visual.rename(columns={
+        "user_id": "Usuario",
+        "nivel_riesgo": "Nivel de riesgo",
+        "score": "Puntaje de riesgo",
+        "flags": "Indicadores",
+        "evidencia": "Evidencia",
+    })
+    st.dataframe(_tabla_visual(detalle_visual), use_container_width=True)
 
 
 render_abuse_view()
