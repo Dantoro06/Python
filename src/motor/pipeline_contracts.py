@@ -15,6 +15,8 @@ CONTRATO_COLUMNS = [
     "evidencia",
 ]
 
+CONTRATO_DETALLE_COLUMNS = CONTRATO_COLUMNS + ["event_name", "fecha_bucket"]
+
 
 PRIORIDAD_RIESGO = {
     "BAJO": 1,
@@ -57,11 +59,12 @@ def normalizar_user_id(value) -> Optional[str]:
 
 def normalizar_salida_motor(df: pd.DataFrame, motor_name: str) -> pd.DataFrame:
     """
-    Normaliza una salida de motor al contrato estandar:
-    user_id, motor, nivel_riesgo, score, flags, evidencia
+    Normaliza una salida de motor al contrato de detalle:
+    user_id, motor, nivel_riesgo, score, flags, evidencia,
+    event_name y fecha_bucket (opcionales, nulos si no existen).
     """
     if df is None or df.empty:
-        return pd.DataFrame(columns=CONTRATO_COLUMNS)
+        return pd.DataFrame(columns=CONTRATO_DETALLE_COLUMNS)
 
     out = df.copy()
     out["motor"] = motor_name
@@ -85,7 +88,10 @@ def normalizar_salida_motor(df: pd.DataFrame, motor_name: str) -> pd.DataFrame:
 
     out["flags"] = out["flags"].map(_coerce_text)
     out["evidencia"] = out["evidencia"].map(_coerce_text)
-    return out[CONTRATO_COLUMNS]
+    for column in CONTRATO_DETALLE_COLUMNS:
+        if column not in out.columns:
+            out[column] = None
+    return out[CONTRATO_DETALLE_COLUMNS]
 
 
 def consolidar_riesgo_global(df_detalle: pd.DataFrame) -> pd.DataFrame:

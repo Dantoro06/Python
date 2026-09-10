@@ -20,7 +20,7 @@ try:
     from motor.motor_multi_cuenta import preparar_tabla_base_multicuenta
     from motor.motores_registry import get_motores_registry
     from motor.pipeline_contracts import (
-        CONTRATO_COLUMNS,
+        CONTRATO_DETALLE_COLUMNS,
         consolidar_riesgo_global,
         normalizar_salida_motor,
     )
@@ -29,7 +29,7 @@ except Exception:
     from motor_multi_cuenta import preparar_tabla_base_multicuenta
     from motores_registry import get_motores_registry
     from pipeline_contracts import (
-        CONTRATO_COLUMNS,
+        CONTRATO_DETALLE_COLUMNS,
         consolidar_riesgo_global,
         normalizar_salida_motor,
     )
@@ -142,7 +142,7 @@ def ejecutar_pipeline_aml_v0(
     if detecciones_validas:
         df_detalle = pd.concat(detecciones_validas, ignore_index=True)
     else:
-        df_detalle = pd.DataFrame(columns=CONTRATO_COLUMNS)
+        df_detalle = pd.DataFrame(columns=CONTRATO_DETALLE_COLUMNS)
 
     df_global = consolidar_riesgo_global(df_detalle)
 
@@ -162,7 +162,7 @@ def ejecutar_pipeline_aml_v0(
     dashboard_detalle_meta_json = None
     if len(df_detalle) <= MAX_FILAS_JSON_DETALLE:
         dashboard_detalle_json = DASHBOARD_DATA_DIR / "pipeline_detalle.json"
-        df_detalle.to_json(dashboard_detalle_json, orient="records", force_ascii=False)
+        df_detalle.to_json(dashboard_detalle_json, orient="records", force_ascii=False, date_format="iso")
     else:
         dashboard_detalle_meta_json = DASHBOARD_DATA_DIR / "pipeline_detalle_meta.json"
         meta = {
