@@ -121,6 +121,21 @@ def construir_gui():
     sidebar.bind("<Configure>", _sync_sidebar_scroll)
     sidebar_canvas.bind("<Configure>", _sync_sidebar_width)
 
+    def _scroll_sidebar_mousewheel(event):
+        # Comprobar el widget bajo el cursor, incluso sobre hijos del sidebar.
+        widget = ventana.winfo_containing(event.x_root, event.y_root)
+        while widget is not None:
+            if widget == sidebar_container:
+                if event.delta:
+                    steps = -int(event.delta / 120)
+                    if steps == 0:
+                        steps = -1 if event.delta > 0 else 1
+                    sidebar_canvas.yview_scroll(steps, "units")
+                return "break"
+            widget = widget.master
+
+    ventana.bind("<MouseWheel>", _scroll_sidebar_mousewheel, add="+")
+
     # Área principal a la derecha
     main_area = ttk.Frame(contenedor)
     main_area.pack(side="left", fill="both", expand=True)
