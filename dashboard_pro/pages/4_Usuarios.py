@@ -2,7 +2,7 @@ import sys
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
@@ -40,24 +40,23 @@ def cargar_json(nombre: str) -> Path:
     )
 
 
-DATA_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
+DATA_PATH = DASHBOARD_DATA_DIR / "pipeline_global.json"
 
 
-def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
+def cargar_reporte(path: Path = DATA_PATH) -> Optional[List[Dict[str, Any]]]:
     try:
-        path = cargar_json("reporte_riesgo_hiddingbonus.json")
+        path = cargar_json(path.name)
     except FileNotFoundError:
         st.warning(
-            "No hay reporte disponible en Data Dashboard/reporte_riesgo_hiddingbonus.json. Ejecuta "
-            "el motor para generarlo."
+            f"No se encontró {path.name}. Ejecuta el Pipeline AML v0 para generarlo."
         )
         return None
 
     try:
         with path.open("r", encoding="utf-8-sig") as f:
             data = json.load(f)
-        if not isinstance(data, dict):
-            st.error("El reporte debe ser un JSON con objeto raíz (dict).")
+        if not isinstance(data, list) or not all(isinstance(registro, dict) for registro in data):
+            st.error(f"{path.name} debe ser un JSON con una lista de registros como objeto raíz.")
             return None
         return data
     except json.JSONDecodeError:
@@ -72,7 +71,7 @@ def render_user_ranking(df: pd.DataFrame):
     st.dataframe(df, use_container_width=True)
 
 
-def render_user_panel(df: pd.DataFrame):
+def render_user_panel(df: pd.DataFrame, df_detalle: pd.DataFrame):
     st.subheader("Panel por usuario")
     if df.empty:
         st.info("El reporte no incluye información de usuarios.")
@@ -82,11 +81,15 @@ def render_user_panel(df: pd.DataFrame):
     seleccionado = st.selectbox("Selecciona un usuario", usuarios)
     detalle = df[df["Usuario"] == seleccionado].iloc[0]
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Casos totales", detalle.get("Casos totales", 0))
     col2.metric("Multiusuario", detalle.get("Multiusuario", 0))
     col3.metric("Self-hedging", detalle.get("Self-hedging", 0))
-    col4.metric("Eventos", detalle.get("Eventos", 0))
+    col4.metric("Bonus Abuse", detalle.get("Bonus Abuse", 0))
+    col5.metric("Eventos", detalle.get("Eventos", 0))
+
+    st.write("Nivel global:", detalle.get("Nivel global"))
+    st.write("Score global:", detalle.get("Score global"))
 
     tipos = detalle.get("Tipos de riesgo")
     if isinstance(tipos, list):
@@ -94,38 +97,69 @@ def render_user_panel(df: pd.DataFrame):
     else:
         st.caption("Sin detalle de tipos de riesgo")
 
+    st.subheader("Detalle de detecciones del usuario")
+    detecciones = df_detalle[
+        df_detalle.get("user_id", pd.Series(index=df_detalle.index, dtype="object")) == seleccionado
+    ]
+    columnas = [
+        columna for columna in ["motor", "nivel_riesgo", "score", "flags", "evidencia", "event_name", "fecha_bucket"]
+        if columna in detecciones.columns
+    ]
+    st.dataframe(detecciones[columnas], use_container_width=True)
+
+
+def construir_ranking(df_global: pd.DataFrame, df_detalle: pd.DataFrame) -> pd.DataFrame:
+    global_usuarios = df_global.reindex(
+        columns=["user_id", "nivel_riesgo", "score", "motor", "flags", "evidencia"]
+    ).dropna(subset=["user_id"])
+    detalle = df_detalle.reindex(columns=["user_id", "motor", "event_name"])
+    conteos = detalle.groupby("user_id").agg(
+        **{
+            "Casos totales": ("motor", "size"),
+            "Multiusuario": ("motor", lambda motores: motores.eq("multi_cuenta").sum()),
+            "Self-hedging": ("motor", lambda motores: motores.eq("self_hedging").sum()),
+            "Bonus Abuse": ("motor", lambda motores: motores.eq("bonus_abuse").sum()),
+            "Eventos": ("event_name", "nunique"),
+            "Tipos de riesgo": ("motor", lambda motores: motores.dropna().unique().tolist()),
+        }
+    )
+    ranking = global_usuarios.merge(conteos, on="user_id", how="left")
+    columnas_conteos = ["Casos totales", "Multiusuario", "Self-hedging", "Bonus Abuse", "Eventos"]
+    ranking[columnas_conteos] = ranking[columnas_conteos].fillna(0).astype(int)
+    ranking["Tipos de riesgo"] = ranking["Tipos de riesgo"].map(
+        lambda tipos: tipos if isinstance(tipos, list) else []
+    )
+    ranking = ranking.rename(
+        columns={"user_id": "Usuario", "nivel_riesgo": "Nivel global", "score": "Score global"}
+    )
+    ranking["_prioridad"] = ranking["Nivel global"].map(
+        {"CRITICO": 4, "ALTO": 3, "MEDIO": 2, "BAJO": 1}
+    ).fillna(0)
+    ranking["_score_num"] = pd.to_numeric(ranking["Score global"], errors="coerce")
+    ranking = ranking.sort_values(
+        ["_prioridad", "Casos totales", "_score_num"], ascending=False, na_position="last"
+    )
+    return ranking[
+        ["Usuario", *columnas_conteos, "Nivel global", "Score global", "Tipos de riesgo"]
+    ].reset_index(drop=True)
+
 
 def render_users_view():
     st.title("🧑‍💻 Usuarios Sospechosos — Análisis PRO")
 
     report = cargar_reporte()
-    if not report:
+    report_detalle = cargar_reporte(DASHBOARD_DATA_DIR / "pipeline_detalle.json")
+    if report is None or report_detalle is None:
         return
 
-    if not isinstance(report, dict):
-        st.error("El reporte no tiene el formato esperado (dict).")
-        return
-
-    usuarios_lista = report.get("top_usuarios_riesgo", [])
-    if not usuarios_lista:
+    df_detalle = pd.DataFrame(report_detalle)
+    usuarios_df = construir_ranking(pd.DataFrame(report), df_detalle)
+    if usuarios_df.empty:
         st.info("El JSON no contiene ranking de usuarios.")
         return
 
-    usuarios_df = pd.DataFrame(usuarios_lista)
-
-    usuarios_df = usuarios_df.rename(
-        columns={
-            "usuario_id": "Usuario",
-            "casos_total": "Casos totales",
-            "casos_multiusuario": "Multiusuario",
-            "casos_self_hedging": "Self-hedging",
-            "eventos_involucrados": "Eventos",
-            "tipos_riesgo": "Tipos de riesgo",
-        }
-    )
-
     render_user_ranking(usuarios_df)
-    render_user_panel(usuarios_df)
+    render_user_panel(usuarios_df, df_detalle)
 
 
 render_users_view()
