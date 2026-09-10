@@ -14,7 +14,7 @@ REM Activar entorno virtual
 call .\.venv\Scripts\activate.bat
 
 REM Ejecutar dashboard Streamlit
-streamlit run dashboard_pro\dashboard.py
+streamlit run dashboard_pro\Dashboard.py
 
 echo.
 echo ============================================
