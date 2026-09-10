@@ -82,7 +82,7 @@ def render_history():
         )
         return
 
-    st.caption(f"Fuente: {DATA_PATH}")
+    st.caption("Fuente de datos: Histórico de riesgo")
 
     if "ratio_sospecha_global" in df.columns:
         zoom_ratio = alt.selection_interval(bind="scales", encodings=["x"])

@@ -100,7 +100,7 @@ def _tabla_visual(df: pd.DataFrame) -> pd.DataFrame:
 def render_abuse_view():
     st.set_page_config(page_title="Risk Monitor PRO — Abuso de Bonos")
     st.title("Risk Monitor PRO — Abuso de Bonos")
-    st.caption(f"Fuente: {DATA_PATH}")
+    st.caption("Fuente de datos: Pipeline de riesgo")
 
     report = cargar_reporte()
     if report is None:
