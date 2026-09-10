@@ -2,7 +2,7 @@ import sys
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import altair as alt
 import pandas as pd
@@ -41,30 +41,28 @@ def cargar_json(nombre: str) -> Path:
     )
 
 
-DATA_PATH = DASHBOARD_DATA_DIR / "reporte_riesgo_hiddingbonus.json"
+DATA_PATH = DASHBOARD_DATA_DIR / "pipeline_detalle.json"
 
 
-def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
+def cargar_reporte(path: Path = DATA_PATH) -> Optional[List[Dict[str, Any]]]:
     try:
-        path = cargar_json("reporte_riesgo_hiddingbonus.json")
+        path = cargar_json("pipeline_detalle.json")
     except FileNotFoundError:
         st.warning(
-            "No se encontró reporte_riesgo_hiddingbonus.json en Data Dashboard/. Ejecuta el motor "
-            "o coloca el archivo en la carpeta indicada."
+            "No se encontró pipeline_detalle.json. Ejecuta el Pipeline AML v0 para generarlo."
         )
         return None
     if not path.exists():
         st.warning(
-            "No se encontró reporte_riesgo_hiddingbonus.json en Data Dashboard/. Ejecuta el motor "
-            "o coloca el archivo en la carpeta indicada."
+            "No se encontró pipeline_detalle.json. Ejecuta el Pipeline AML v0 para generarlo."
         )
         return None
 
     try:
         with path.open("r", encoding="utf-8-sig") as f:
             data = json.load(f)
-        if not isinstance(data, dict):
-            st.error("El reporte debe ser un JSON con objeto raíz (dict).")
+        if not isinstance(data, list):
+            st.error("El reporte debe ser un JSON con una lista de registros como objeto raíz.")
             return None
         return data
     except json.JSONDecodeError:
@@ -74,51 +72,60 @@ def cargar_reporte(path: Path = DATA_PATH) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _df_niveles(estadisticas: Dict[str, Any], clave: str) -> pd.DataFrame:
-    datos = estadisticas.get(clave, {}) or {}
-    conteos = datos.get("por_nivel", {}) if isinstance(datos, dict) else {}
+def _df_niveles(df: pd.DataFrame) -> pd.DataFrame:
+    conteos = df.get("nivel_riesgo", pd.Series(dtype="object")).value_counts()
     return pd.DataFrame(
         [
             {"Nivel": nivel, "Casos": conteos.get(nivel, 0)}
-            for nivel in ["ALTO", "MEDIO", "BAJO"]
+            for nivel in ["CRITICO", "ALTO", "MEDIO", "BAJO"]
         ]
     )
 
 
 def render_abuse_view():
-    st.title("🔥 Abuso de Bonus — Multiusuario y Self-Hedging")
-
-    report = cargar_reporte()
-    if not report:
-        return
-
-    estadisticas = report.get("estadisticas_riesgo", {})
-    multi_df = _df_niveles(estadisticas, "multiusuario")
-    self_df = _df_niveles(estadisticas, "self_hedging")
-
-    col1, col2 = st.columns(2)
-    col1.metric("Casos multiusuario", estadisticas.get("multiusuario", {}).get("casos_totales", 0))
-    col2.metric("Casos self-hedging", estadisticas.get("self_hedging", {}).get("casos_totales", 0))
-
+    st.title("Abuso de Bonus")
     st.caption(f"Fuente: {DATA_PATH}")
 
-    st.subheader("Distribución de niveles de riesgo")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.write("Multiusuario")
-        chart_multi = alt.Chart(multi_df).mark_bar(color="#1f77b4").encode(
-            x="Nivel:N", y="Casos:Q", tooltip=["Nivel", "Casos"]
-        )
-        st.altair_chart(chart_multi, use_container_width=True)
-        st.dataframe(multi_df, use_container_width=True)
+    report = cargar_reporte()
+    if report is None:
+        return
 
-    with col_b:
-        st.write("Self-Hedging")
-        chart_self = alt.Chart(self_df).mark_bar(color="#ff7f0e").encode(
-            x="Nivel:N", y="Casos:Q", tooltip=["Nivel", "Casos"]
-        )
-        st.altair_chart(chart_self, use_container_width=True)
-        st.dataframe(self_df, use_container_width=True)
+    detecciones = [
+        registro for registro in report
+        if isinstance(registro, dict) and registro.get("motor") == "bonus_abuse"
+    ]
+    if not detecciones:
+        st.info("No hay detecciones de Bonus Abuse en pipeline_detalle.json.")
+        return
+
+    df = pd.DataFrame(detecciones)
+    usuarios = df.get("user_id", pd.Series(dtype="object")).nunique(dropna=True)
+    scores = pd.to_numeric(df.get("score", pd.Series(dtype="object")), errors="coerce").dropna()
+    score_promedio = scores.mean() if not scores.empty else 0
+    score_maximo = scores.max() if not scores.empty else 0
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Casos detectados", len(df))
+    col2.metric("Usuarios detectados", usuarios)
+    col3.metric("Score promedio", f"{score_promedio:.2f}")
+    col4.metric("Score máximo", score_maximo)
+
+    st.subheader("Distribución por nivel de riesgo")
+    niveles_df = _df_niveles(df)
+    chart = alt.Chart(niveles_df).mark_bar(color="#1f77b4").encode(
+        x=alt.X("Nivel:N", sort=["CRITICO", "ALTO", "MEDIO", "BAJO"]),
+        y="Casos:Q",
+        tooltip=["Nivel", "Casos"],
+    )
+    st.altair_chart(chart, use_container_width=True)
+    st.dataframe(niveles_df, use_container_width=True)
+
+    st.subheader("Detalle de detecciones")
+    columnas = [
+        columna for columna in ["user_id", "nivel_riesgo", "score", "flags", "evidencia"]
+        if columna in df.columns
+    ]
+    st.dataframe(df[columnas], use_container_width=True)
 
 
 render_abuse_view()
