@@ -19,6 +19,7 @@ try:
     from motor.aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
     from motor.motor_multi_cuenta import preparar_tabla_base_multicuenta
     from motor.motores_registry import get_motores_registry
+    from motor.notificador_email_riesgo import procesar_alertas_email
     from motor.pipeline_contracts import (
         CONTRATO_DETALLE_COLUMNS,
         consolidar_riesgo_global,
@@ -28,6 +29,7 @@ except Exception:
     from aml_utils_io import cargar_base_apuestas, cargar_tabla_opcional
     from motor_multi_cuenta import preparar_tabla_base_multicuenta
     from motores_registry import get_motores_registry
+    from notificador_email_riesgo import procesar_alertas_email
     from pipeline_contracts import (
         CONTRATO_DETALLE_COLUMNS,
         consolidar_riesgo_global,
@@ -81,6 +83,9 @@ def ejecutar_pipeline_aml_v0(
     out_dir: Optional[str] = None,
     return_summary: bool = False,
     config_bonus_abuse: Optional[dict] = None,
+    activar_alertas_email: bool = False,
+    alertas_email_dry_run: bool = True,
+    niveles_alerta_email=("CRITICO", "ALTO"),
 ) -> Union[pd.DataFrame, dict]:
     """
     Ejecuta el pipeline AML v0.
@@ -181,8 +186,36 @@ def ejecutar_pipeline_aml_v0(
     if dashboard_detalle_meta_json is not None:
         print(f"[PIPELINE V0] detalle_meta_json: {dashboard_detalle_meta_json}")
 
+    resumen_alertas = None
+    if activar_alertas_email is True:
+        try:
+            registros_alerta = json.loads(
+                df_detalle.to_json(orient="records", force_ascii=False, date_format="iso")
+            )
+            resumen_alertas = procesar_alertas_email(
+                registros_alerta,
+                niveles_alerta=niveles_alerta_email,
+                dry_run=alertas_email_dry_run,
+            )
+        except Exception:
+            resumen_alertas = {
+                "candidatas": 0,
+                "enviadas": 0,
+                "omitidas_duplicadas": 0,
+                "errores": ["No se pudieron procesar las alertas de correo."],
+                "dry_run": alertas_email_dry_run,
+                "alertas": [],
+            }
+        print(
+            f"[PIPELINE V0] alertas_email: candidatas={resumen_alertas['candidatas']} "
+            f"enviadas={resumen_alertas['enviadas']} "
+            f"duplicadas={resumen_alertas['omitidas_duplicadas']} "
+            f"dry_run={resumen_alertas['dry_run']}"
+        )
+
     if return_summary:
         return {
+            "alertas_email": resumen_alertas,
             "total_detecciones": int(len(df_detalle)),
             "total_usuarios": int(df_global["user_id"].nunique())
             if "user_id" in df_global.columns
